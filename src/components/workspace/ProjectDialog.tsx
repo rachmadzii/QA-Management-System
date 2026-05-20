@@ -38,6 +38,12 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
+const envLabels: Record<string, string> = {
+  development: "Development",
+  staging: "Staging",
+  production: "Production",
+};
+
 interface ProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -54,6 +60,7 @@ export function ProjectDialog({ open, onOpenChange, projectToEdit, onSuccess }: 
     handleSubmit,
     setValue,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
@@ -119,7 +126,7 @@ export function ProjectDialog({ open, onOpenChange, projectToEdit, onSuccess }: 
           createdBy: user.uid,
           createdAt: serverTimestamp(),
         });
-        
+
         // Save the generated document ID inside the document as well for clean queries
         await updateDoc(docRef, { id: docRef.id });
         toast.success("Project created successfully!");
@@ -170,36 +177,36 @@ export function ProjectDialog({ open, onOpenChange, projectToEdit, onSuccess }: 
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="environment" className="text-muted-foreground font-semibold">Environment</Label>
-              <Select
-                onValueChange={(val) => setValue("environment", val as any)}
-                defaultValue={projectToEdit?.environment || "development"}
-              >
-                <SelectTrigger id="environment" className="bg-card border-border text-foreground focus:ring-sky-500/20 rounded-lg text-xs h-9">
-                  <SelectValue placeholder="Select environment" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border text-foreground text-xs rounded-xl shadow-md">
-                  <SelectItem value="development" className="rounded-lg font-semibold">Development</SelectItem>
-                  <SelectItem value="staging" className="rounded-lg font-semibold">Staging</SelectItem>
-                  <SelectItem value="production" className="rounded-lg font-semibold">Production</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="environment" className="text-muted-foreground font-semibold">Environment</Label>
+            <Select
+              onValueChange={(val) => setValue("environment", val as any)}
+              defaultValue={projectToEdit?.environment || "development"}
+            >
+              <SelectTrigger id="environment" className="bg-card border-border text-foreground focus:ring-sky-500/20 rounded-lg text-xs h-9 w-full">
+                <SelectValue placeholder="Select environment">
+                  {envLabels[watch("environment") || "development"]}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border text-foreground text-xs rounded-xl shadow-md">
+                <SelectItem value="development" className="rounded-lg font-semibold">Development</SelectItem>
+                <SelectItem value="staging" className="rounded-lg font-semibold">Staging</SelectItem>
+                <SelectItem value="production" className="rounded-lg font-semibold">Production</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="baseUrl" className="text-muted-foreground font-semibold">Base Server URL</Label>
-              <Input
-                id="baseUrl"
-                placeholder="https://api.staging.com/v1"
-                className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs h-9"
-                {...register("baseUrl")}
-              />
-              {errors.baseUrl && (
-                <p className="text-xs text-red-500 font-semibold mt-1">{errors.baseUrl.message}</p>
-              )}
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="baseUrl" className="text-muted-foreground font-semibold">Base Server URL</Label>
+            <Input
+              id="baseUrl"
+              placeholder="https://api.staging.com/v1"
+              className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs h-9"
+              {...register("baseUrl")}
+            />
+            {errors.baseUrl && (
+              <p className="text-xs text-red-500 font-semibold mt-1">{errors.baseUrl.message}</p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -227,7 +234,7 @@ export function ProjectDialog({ open, onOpenChange, projectToEdit, onSuccess }: 
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-gradient-to-r from-sky-500 to-indigo-650 hover:opacity-95 text-white font-semibold shadow-xs rounded-lg text-xs px-4 h-9 cursor-pointer transition-opacity"
+              className="bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-semibold shadow-xs rounded-lg text-xs px-4 h-9 cursor-pointer transition-opacity"
             >
               {isSubmitting ? "Saving..." : isEditing ? "Save Changes" : "Create Project"}
             </Button>

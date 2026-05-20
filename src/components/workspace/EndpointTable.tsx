@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Copy, ExternalLink, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { toast } from "sonner";
+import { getSwaggerUiUrl } from "@/lib/swaggerParser";
 
 interface Endpoint {
   id: string;
@@ -141,7 +142,7 @@ export function EndpointTable({ data, onReportBug }: EndpointTableProps) {
           <div className="flex items-center gap-2">
             {endpoint.swaggerLink && (
               <a
-                href={endpoint.swaggerLink}
+                href={getSwaggerUiUrl(endpoint.swaggerLink)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center h-7 w-7 text-muted-foreground hover:text-foreground bg-card hover:bg-neutral-100 dark:hover:bg-neutral-900 border border-border rounded-lg transition-colors"

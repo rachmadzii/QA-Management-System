@@ -59,10 +59,11 @@ interface BugDialogProps {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   bugToEdit?: any;
+  initialEndpointId?: string;
   onSuccess: () => void;
 }
 
-export function BugDialog({ open, onOpenChange, projectId, bugToEdit, onSuccess }: BugDialogProps) {
+export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEndpointId, onSuccess }: BugDialogProps) {
   const { user, profile } = useAuth();
   const isEditing = !!bugToEdit;
 
@@ -119,6 +120,12 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, onSuccess 
         const epQuery = query(collection(db, "endpoints"), where("projectId", "==", projectId));
         const epSnapshot = await getDocs(epQuery);
         const epList = epSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Sort alphabetically by path (A-Z)
+        epList.sort((a: any, b: any) => {
+          const pathA = (a.path || "").toLowerCase();
+          const pathB = (b.path || "").toLowerCase();
+          return pathA.localeCompare(pathB);
+        });
         setEndpoints(epList);
 
         // Fetch users
@@ -162,13 +169,13 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, onSuccess 
           severity: "minor",
           priority: "medium",
           httpStatus: "",
-          endpointId: "",
+          endpointId: initialEndpointId || "",
           assignedTo: "",
         });
         setScreenshotUrls([]);
       }
     }
-  }, [open, bugToEdit, reset]);
+  }, [open, bugToEdit, initialEndpointId, reset]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -201,6 +208,7 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, onSuccess 
     }
 
     try {
+      const selectedEp = endpoints.find(e => e.id === values.endpointId);
       const bugData = {
         projectId,
         title: values.title,
@@ -212,6 +220,9 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, onSuccess 
         priority: values.priority,
         httpStatus: values.httpStatus ? parseInt(values.httpStatus) : null,
         endpointId: values.endpointId || null,
+        endpointPath: selectedEp?.path || null,
+        endpointMethod: selectedEp?.method || null,
+        swaggerLink: selectedEp?.swaggerLink || null,
         assignedTo: values.assignedTo || null,
         screenshotUrls,
         updatedAt: serverTimestamp(),
@@ -443,7 +454,7 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, onSuccess 
                   <Textarea
                     id="bug-steps"
                     placeholder="1. Post invalid authorization credentials to /auth/login&#13;2. Observe return payload structures..."
-                    className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3 font-mono text-[11px]"
+                    className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3"
                     {...register("stepsToReproduce")}
                   />
                   {errors.stepsToReproduce && (
@@ -457,7 +468,7 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, onSuccess 
                     <Textarea
                       id="bug-expected"
                       placeholder="e.g. 401 Unauthorized status with a JSON error payload."
-                      className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[60px] leading-relaxed p-3"
+                      className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3"
                       {...register("expectedResult")}
                     />
                     {errors.expectedResult && (
@@ -469,7 +480,7 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, onSuccess 
                     <Textarea
                       id="bug-actual"
                       placeholder="e.g. 500 Server Error showing a DB execution stacktrace."
-                      className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[60px] leading-relaxed p-3"
+                      className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3"
                       {...register("actualResult")}
                     />
                     {errors.actualResult && (
@@ -565,14 +576,11 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, onSuccess 
                                             {ep.method}
                                           </span>
                                           <span className="font-mono text-[11px] truncate text-foreground group-hover:text-sky-500 transition-colors">{ep.path}</span>
+                                          <span className="bg-neutral-100 dark:bg-neutral-950 px-1 py-0.2 rounded text-[8px] font-semibold text-muted-foreground uppercase border border-border">
+                                            {ep.tag}
+                                          </span>
                                         </div>
                                         {isSel && <Check className="h-3.5 w-3.5 text-sky-500" />}
-                                      </div>
-                                      <div className="flex items-center justify-between text-[9px] text-muted-foreground mt-0.5 pl-7">
-                                        <span className="truncate max-w-[150px]">{ep.summary || "No description"}</span>
-                                        <span className="bg-neutral-100 dark:bg-neutral-950 px-1 py-0.2 rounded text-[8px] font-semibold text-muted-foreground uppercase border border-border">
-                                          {ep.tag}
-                                        </span>
                                       </div>
                                     </button>
                                   );
@@ -715,7 +723,7 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, onSuccess 
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-gradient-to-r from-sky-500 to-indigo-650 hover:opacity-95 text-white font-semibold shadow-xs rounded-xl text-xs px-4 h-9 cursor-pointer transition-opacity"
+                className="bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-semibold shadow-xs rounded-xl text-xs px-4 h-9 cursor-pointer transition-opacity"
               >
                 {isSubmitting ? "Logging Bug..." : isEditing ? "Save Changes" : "Submit Bug Report"}
               </Button>

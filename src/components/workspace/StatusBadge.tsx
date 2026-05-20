@@ -33,7 +33,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   };
 
   return (
-    <Badge variant="outline" className={cn("px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider justify-center w-24 shrink-0 rounded-md", getStatusStyle(status))}>
+    <Badge variant="outline" className={cn("px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider justify-center w-fit shrink-0 rounded-md", getStatusStyle(status))}>
       {getStatusLabel(status)}
     </Badge>
   );

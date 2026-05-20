@@ -64,7 +64,7 @@ export default function ProjectsPage() {
         {isAdmin && (
           <Button
             onClick={handleCreateClick}
-            className="bg-gradient-to-r from-sky-500 to-indigo-650 hover:opacity-95 text-white font-semibold gap-2 self-start sm:self-auto shrink-0 shadow-sm rounded-xl py-2 cursor-pointer transition-opacity text-xs"
+            className="bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-semibold gap-2 self-start sm:self-auto shrink-0 shadow-sm rounded-xl py-2 cursor-pointer transition-opacity text-xs"
           >
             <Plus className="h-4 w-4" />
             New Project
@@ -97,8 +97,8 @@ export default function ProjectsPage() {
           </div>
           <h3 className="text-sm font-bold text-foreground">No projects found</h3>
           <p className="text-muted-foreground text-xs mt-1 max-w-xs leading-relaxed">
-            {searchQuery 
-              ? "No projects match your search query." 
+            {searchQuery
+              ? "No projects match your search query."
               : "Create your first API project and connect Swagger documentation."}
           </p>
           {isAdmin && !searchQuery && (

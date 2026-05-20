@@ -7,6 +7,36 @@ export interface ParsedEndpoint {
   swaggerLink: string;
 }
 
+export function getSwaggerUiUrl(swaggerUrl: string): string {
+  if (!swaggerUrl) return "";
+  try {
+    const url = new URL(swaggerUrl);
+    const existingHash = url.hash;
+    let pathname = url.pathname.toLowerCase();
+    
+    if (pathname.endsWith("/")) {
+      pathname = pathname.slice(0, -1);
+    }
+    
+    const swaggerMatch = pathname.match(/^(.*\/swagger)(?:\/|$)/i);
+    if (swaggerMatch) {
+      url.pathname = swaggerMatch[1] + "/index.html";
+      url.search = "";
+      url.hash = existingHash;
+      return url.toString();
+    } else if (pathname.match(/\.[a-z0-9]+$/i)) {
+      // If it ends with a file extension, replace the filename with index.html
+      url.pathname = url.pathname.replace(/\/[^\/]+\.[a-z0-9]+$/i, "/index.html");
+      url.search = "";
+      url.hash = existingHash;
+      return url.toString();
+    }
+  } catch (e) {
+    // Fallback if URL parsing fails
+  }
+  return swaggerUrl;
+}
+
 export function parseSwagger(spec: any, swaggerUrl: string): ParsedEndpoint[] {
   const endpoints: ParsedEndpoint[] = [];
 
@@ -16,15 +46,7 @@ export function parseSwagger(spec: any, swaggerUrl: string): ParsedEndpoint[] {
 
   const paths = spec.paths || {};
 
-  // Clean the swagger URL to point to the index page or use as a base for hashes
-  let uiBaseUrl = swaggerUrl;
-  // If the url ends with json or yaml, try to get the directory, but keep it simple:
-  // if index.html is not in it, we can still append hash.
-  if (uiBaseUrl.endsWith("/swagger.json") || uiBaseUrl.endsWith("/openapi.json")) {
-    uiBaseUrl = uiBaseUrl.replace(/\/(swagger|openapi)\.json$/, "/index.html");
-  } else if (uiBaseUrl.endsWith(".json") || uiBaseUrl.endsWith(".yaml") || uiBaseUrl.endsWith(".yml")) {
-    // Fallback or leave as is
-  }
+  const uiBaseUrl = getSwaggerUiUrl(swaggerUrl);
 
   for (const [pathKey, pathItem] of Object.entries(paths)) {
     if (!pathItem || typeof pathItem !== "object") continue;

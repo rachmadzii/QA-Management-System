@@ -13,25 +13,26 @@ import { Input } from "@/components/ui/input";
 import { EndpointTable } from "@/components/workspace/EndpointTable";
 import { BugCard } from "@/components/workspace/BugCard";
 import { BugDialog } from "@/components/workspace/BugDialog";
-import { 
-  Globe, 
-  ExternalLink, 
-  RefreshCw, 
-  Plus, 
-  Search, 
-  Terminal, 
-  Bug, 
+import {
+  Globe,
+  ExternalLink,
+  RefreshCw,
+  Plus,
+  Search,
+  Terminal,
+  Bug,
   ArrowLeft,
   Loader2,
   Lock
 } from "lucide-react";
 import { toast } from "sonner";
+import { getSwaggerUiUrl } from "@/lib/swaggerParser";
 
 export default function ProjectDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const { user, profile } = useAuth();
-  
+
   const projectId = params.id as string;
   const isAdmin = profile?.role === "admin";
   const isQA = profile?.role === "qa" || profile?.role === "admin";
@@ -39,7 +40,7 @@ export default function ProjectDetailsPage() {
   const [activeTab, setActiveTab] = useState("endpoints");
   const [endpointSearch, setEndpointSearch] = useState("");
   const [bugSearch, setBugSearch] = useState("");
-  
+
   const [syncing, setSyncing] = useState(false);
   const [bugDialogOpen, setBugDialogOpen] = useState(false);
   const [selectedEndpoint, setSelectedEndpoint] = useState<any>(null);
@@ -65,9 +66,9 @@ export default function ProjectDetailsPage() {
       const snapshot = await getDocs(q);
       const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       return list.sort((a: any, b: any) => {
-        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-        return timeB - timeA;
+        const pathA = (a.path || "").toLowerCase();
+        const pathB = (b.path || "").toLowerCase();
+        return pathA.localeCompare(pathB);
       });
     },
   });
@@ -115,6 +116,11 @@ export default function ProjectDetailsPage() {
     bug.description?.toLowerCase().includes(bugSearch.toLowerCase())
   );
 
+  const handleEndpointClick = (path: string) => {
+    setEndpointSearch(path);
+    setActiveTab("endpoints");
+  };
+
   // Handle Sync Swagger button click
   const handleSyncSwagger = async () => {
     if (!user || !project) return;
@@ -124,7 +130,7 @@ export default function ProjectDetailsPage() {
     }
     setSyncing(true);
     const toastId = toast.loading("Fetching Swagger spec and updating endpoints...");
-    
+
     try {
       // 1. Call server API to fetch and parse the Swagger spec
       const res = await fetch("/api/sync-swagger", {
@@ -132,65 +138,83 @@ export default function ProjectDetailsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ swaggerUrl: project.swaggerUrl }),
       });
-      
+
       const result = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(result.error || "Sync failed");
       }
-      
+
       const parsedEndpoints = result.endpoints || [];
       if (parsedEndpoints.length === 0) {
         throw new Error("No endpoints found in the specification");
       }
 
-      // 2. Delete existing endpoints for this project
+      // 2. Fetch existing endpoints for this project
       const endpointsRef = collection(db, "endpoints");
       const q = query(endpointsRef, where("projectId", "==", projectId));
       const querySnapshot = await getDocs(q);
 
+      // Map: `${method.toUpperCase()}:${path}` -> { id, ref, data }
+      const existingEndpointsMap = new Map<string, any>();
+      for (const d of querySnapshot.docs) {
+        const data = d.data();
+        const key = `${(data.method || "").toUpperCase()}:${data.path}`;
+        existingEndpointsMap.set(key, { id: d.id, ref: d.ref, data });
+      }
+
       let batch = writeBatch(db);
       let operationCount = 0;
+      const keepIds = new Set<string>();
 
-      for (const endpointDoc of querySnapshot.docs) {
-        batch.delete(endpointDoc.ref);
+      // 3. Upsert new/updated endpoints
+      for (const ep of parsedEndpoints) {
+        const key = `${ep.method.toUpperCase()}:${ep.path}`;
+        const existing = existingEndpointsMap.get(key);
+
+        if (existing) {
+          batch.update(existing.ref, {
+            tag: ep.tag,
+            summary: ep.summary || "",
+            description: ep.description || "",
+            swaggerLink: ep.swaggerLink || "",
+            updatedAt: serverTimestamp(),
+          });
+          keepIds.add(existing.id);
+        } else {
+          const newDocRef = doc(endpointsRef);
+          batch.set(newDocRef, {
+            id: newDocRef.id,
+            projectId,
+            tag: ep.tag,
+            method: ep.method,
+            path: ep.path,
+            summary: ep.summary || "",
+            description: ep.description || "",
+            swaggerLink: ep.swaggerLink || "",
+            createdAt: serverTimestamp(),
+          });
+        }
+
         operationCount++;
-        
         if (operationCount >= 450) {
           await batch.commit();
           batch = writeBatch(db);
           operationCount = 0;
         }
       }
-      
-      if (operationCount > 0) {
-        await batch.commit();
-      }
 
-      // 3. Write new endpoints in batches
-      batch = writeBatch(db);
-      operationCount = 0;
+      // 4. Delete existing endpoints that are no longer in the Swagger specification
+      for (const [key, existing] of existingEndpointsMap.entries()) {
+        if (!keepIds.has(existing.id)) {
+          batch.delete(existing.ref);
+          operationCount++;
 
-      for (const ep of parsedEndpoints) {
-        const newDocRef = doc(endpointsRef); // Auto-generated ID
-        batch.set(newDocRef, {
-          id: newDocRef.id,
-          projectId,
-          tag: ep.tag,
-          method: ep.method,
-          path: ep.path,
-          summary: ep.summary || "",
-          description: ep.description || "",
-          swaggerLink: ep.swaggerLink || "",
-          createdAt: serverTimestamp(),
-        });
-        
-        operationCount++;
-
-        if (operationCount >= 450) {
-          await batch.commit();
-          batch = writeBatch(db);
-          operationCount = 0;
+          if (operationCount >= 450) {
+            await batch.commit();
+            batch = writeBatch(db);
+            operationCount = 0;
+          }
         }
       }
 
@@ -300,8 +324,8 @@ export default function ProjectDetailsPage() {
               <div className="flex items-center gap-1.5">
                 <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/75 shrink-0" />
                 <span className="text-muted-foreground/60">Swagger URL:</span>
-                <a href={project.swaggerUrl} target="_blank" rel="noopener noreferrer" className="hover:underline text-sky-500 dark:text-sky-400 font-bold truncate max-w-xs">
-                  {project.swaggerUrl}
+                <a href={getSwaggerUiUrl(project.swaggerUrl)} target="_blank" rel="noopener noreferrer" className="hover:underline text-sky-500 dark:text-sky-400 font-bold truncate max-w-xs">
+                  {getSwaggerUiUrl(project.swaggerUrl)}
                 </a>
               </div>
             )}
@@ -333,7 +357,7 @@ export default function ProjectDetailsPage() {
           {isQA && (
             <Button
               onClick={handleCreateBugGeneral}
-              className="bg-gradient-to-r from-sky-500 to-indigo-650 hover:opacity-95 text-white font-semibold text-xs gap-1.5 shadow-sm px-3.5 py-1.5 rounded-lg cursor-pointer transition-opacity"
+              className="bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-semibold text-xs gap-1.5 shadow-sm px-3.5 py-1.5 rounded-lg cursor-pointer transition-opacity"
             >
               <Plus className="h-3.5 w-3.5" />
               Report Bug
@@ -344,11 +368,11 @@ export default function ProjectDetailsPage() {
 
       {/* Main Tabs Container */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-neutral-100 dark:bg-neutral-900 border border-border p-1 h-10 rounded-xl w-full sm:w-auto flex sm:inline-flex">
-          <TabsTrigger value="endpoints" className="text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground px-4 h-full text-xs font-semibold rounded-lg shadow-xs flex-1 sm:flex-none">
+        <TabsList className="bg-neutral-100 dark:bg-neutral-900 border border-border gap-1 rounded-xl w-full sm:w-auto flex sm:inline-flex">
+          <TabsTrigger value="endpoints" className="text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground py-1.5 px-4 h-fit text-xs font-semibold rounded-lg shadow-xs flex-1 sm:flex-none">
             Endpoints ({endpoints.length})
           </TabsTrigger>
-          <TabsTrigger value="bugs" className="text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground px-4 h-full text-xs font-semibold rounded-lg shadow-xs flex-1 sm:flex-none">
+          <TabsTrigger value="bugs" className="text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground py-1.5 px-4 h-fit text-xs font-semibold rounded-lg shadow-xs flex-1 sm:flex-none">
             Bugs & Issues ({bugs.length})
           </TabsTrigger>
         </TabsList>
@@ -427,12 +451,13 @@ export default function ProjectDetailsPage() {
                       status: bug.status,
                       severity: bug.severity,
                       priority: bug.priority,
-                      endpointPath: linkedEp?.path,
-                      endpointMethod: linkedEp?.method,
+                      endpointPath: linkedEp?.path || bug.endpointPath,
+                      endpointMethod: linkedEp?.method || bug.endpointMethod,
                       httpStatus: bug.httpStatus,
                       assignedToName: usersMap[bug.assignedTo],
                       createdAt: bug.createdAt,
                     }}
+                    onEndpointClick={handleEndpointClick}
                   />
                 );
               })}
@@ -447,6 +472,7 @@ export default function ProjectDetailsPage() {
         onOpenChange={setBugDialogOpen}
         projectId={projectId}
         bugToEdit={null}
+        initialEndpointId={selectedEndpoint?.id}
         onSuccess={() => {
           refetchBugs();
         }}

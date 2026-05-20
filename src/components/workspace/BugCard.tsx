@@ -22,9 +22,10 @@ interface BugCardProps {
     assignedToName?: string;
     createdAt: any;
   };
+  onEndpointClick?: (path: string) => void;
 }
 
-export function BugCard({ bug }: BugCardProps) {
+export function BugCard({ bug, onEndpointClick }: BugCardProps) {
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
       case "high":
@@ -57,12 +58,27 @@ export function BugCard({ bug }: BugCardProps) {
             <CardTitle className="text-foreground text-sm font-bold truncate group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors">
               {bug.title}
             </CardTitle>
-            
+
             {/* Linked Endpoint details */}
             {bug.endpointPath ? (
               <div className="flex items-center gap-1.5 mt-1 font-mono text-[10px] text-muted-foreground font-semibold">
                 <span className="font-extrabold text-sky-600 dark:text-sky-400 shrink-0">{bug.endpointMethod}</span>
-                <span className="truncate bg-neutral-100 dark:bg-neutral-900/50 px-1 py-0.2 rounded border border-border/40">{bug.endpointPath}</span>
+                {onEndpointClick ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEndpointClick(bug.endpointPath!);
+                    }}
+                    className="truncate bg-sky-50 dark:bg-sky-950/30 hover:bg-sky-100 dark:hover:bg-sky-900/50 text-sky-600 dark:text-sky-400 px-1.5 py-0.5 rounded border border-sky-500/20 dark:border-sky-500/10 cursor-pointer underline decoration-dotted transition-colors hover:text-sky-700 dark:hover:text-sky-300 font-bold"
+                  >
+                    {bug.endpointPath}
+                  </button>
+                ) : (
+                  <span className="truncate bg-neutral-100 dark:bg-neutral-900/50 px-1 py-0.2 rounded border border-border/40">
+                    {bug.endpointPath}
+                  </span>
+                )}
                 {bug.httpStatus && (
                   <span className="text-red-500 dark:text-red-400 font-extrabold shrink-0">({bug.httpStatus})</span>
                 )}
@@ -82,7 +98,7 @@ export function BugCard({ bug }: BugCardProps) {
         {/* Badges container */}
         <div className="flex items-center gap-2">
           <SeverityBadge severity={bug.severity} />
-          
+
           <Badge variant="outline" className="px-1.5 py-0.5 text-[9px] bg-neutral-50/40 dark:bg-neutral-950/40 text-muted-foreground border-border gap-1 font-bold uppercase tracking-wider shrink-0">
             {getPriorityIcon(bug.priority)}
             {bug.priority}
