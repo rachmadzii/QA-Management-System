@@ -125,7 +125,7 @@ export default function LoginPage() {
           </span>
         </div>
 
-        {/* Middle Value Proposition & Live Mock UI */}
+        {/* Middle Value Proposition */}
         <div className="space-y-4">
           <span className="px-2.5 py-1 rounded-full border border-sky-500/25 bg-sky-500/10 text-sky-400 text-[10px] font-bold tracking-wider uppercase inline-flex items-center gap-1.5">
             <Sparkles className="h-3 w-3" />
