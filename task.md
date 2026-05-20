@@ -1,0 +1,46 @@
+# QABug Implementation Tasks
+
+- [x] Phase 1: Initialize Next.js Project & Install Dependencies
+  - [x] Initialize Next.js App Router project
+  - [x] Install shadcn/ui and initialize styling
+  - [x] Install Firebase, TanStack Query, Lucide icons, React Hook Form, Zod, TanStack Table, Recharts, Framer Motion
+- [x] Phase 2: Firebase Setup & Auth Provider
+  - [x] Create `.env.local` configuration template
+  - [x] Initialize Firebase Client SDK (`firebase.ts`)
+  - [x] Build AuthContext Provider & Protected Route Guard
+  - [x] Create Login & Registration UI page
+- [x] Phase 3: Layout System & Navigation
+  - [x] Build collapsible Sidebar & Top Navigation bar
+  - [x] Set up theme and CSS rules (Modern dark-ready professional theme)
+- [x] Phase 4: Swagger Parser & Sync API
+  - [x] Create Swagger v2/v3 parser utility
+  - [x] Create Next.js API endpoint for fetching & syncing Swagger URL
+- [x] Phase 5: Project Management CRUD
+  - [x] Project dashboard & listing page with environment badges
+  - [x] Project creation/edit dialog/form
+- [x] Phase 6: Endpoint Management
+  - [x] TanStack Table for endpoint listing
+  - [x] Search, filter by tag, filter by method
+  - [x] Sync Swagger button inside project details
+- [x] Phase 7: Bug Management
+  - [x] Bug details page with activity timeline
+  - [x] Bug creation/edit form with screenshot file upload
+  - [x] Assignee / Severity / Priority selectors
+- [x] Phase 8: Dashboard Analytics & Activity Logs
+  - [x] Summary statistics cards
+  - [x] Charts for severity and project distributions
+  - [x] Recent bug activities feed
+- [x] Phase 9: Quality & Verification
+  - [x] Type check and build project
+  - [x] Manual test and validation
+- [x] Phase 10: UI Revamp (Linear/Notion-inspired premium SaaS aesthetic)
+  - [x] Configure theme foundation (ThemeProvider, Tailwind 4 Oklch colors, Plus Jakarta Sans)
+  - [x] Create ThemeToggle and modernize Navbar & Sidebar
+  - [x] Modernize Login & Registration UI page
+  - [x] Revamp Dashboard page (Recharts theme compliance, rounded-2xl cards)
+  - [x] Modernize Projects listing page & ProjectCard
+  - [x] Revamp Project details workspace (Endpoints tabs, tables, monospace routes)
+  - [x] Revamp Bug details page & timeline activities
+  - [x] Polish general dialogs/modals (ProjectDialog, BugDialog)
+  - [x] Run build validation to ensure no lint/build issues
+
