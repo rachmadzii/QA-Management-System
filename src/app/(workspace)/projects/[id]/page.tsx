@@ -23,7 +23,8 @@ import {
   Bug,
   ArrowLeft,
   Loader2,
-  Lock
+  Lock,
+  Settings
 } from "lucide-react";
 import { toast } from "sonner";
 import { getSwaggerUiUrl } from "@/lib/swaggerParser";
@@ -300,15 +301,15 @@ export default function ProjectDetailsPage() {
       </a>
 
       {/* Project Meta Details Header */}
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 border-b border-border/40 pb-6">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 border-b border-neutral-250/20 dark:border-white/5 pb-6">
         <div className="space-y-2.5">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground">{project.name}</h1>
-            <Badge variant="outline" className={`px-2 py-0.5 text-[9px] uppercase font-extrabold tracking-wider ${getEnvBadgeColor(project.environment)}`}>
+            <Badge variant="outline" className={`px-2 py-0.5 text-[8px] uppercase font-extrabold tracking-wider rounded-md ${getEnvBadgeColor(project.environment)}`}>
               {project.environment}
             </Badge>
           </div>
-          <p className="text-muted-foreground text-xs max-w-3xl leading-relaxed">
+          <p className="text-muted-foreground text-xs max-w-3xl leading-relaxed font-semibold">
             {project.description || "No project description provided."}
           </p>
 
@@ -317,14 +318,14 @@ export default function ProjectDetailsPage() {
               <div className="flex items-center gap-1.5">
                 <Globe className="h-3.5 w-3.5 text-muted-foreground/75 shrink-0" />
                 <span className="text-muted-foreground/60">Server:</span>
-                <span className="truncate max-w-xs text-foreground/80">{project.baseUrl}</span>
+                <span className="truncate max-w-xs text-foreground/80 font-mono font-bold">{project.baseUrl}</span>
               </div>
             )}
             {project.swaggerUrl && (
               <div className="flex items-center gap-1.5">
                 <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/75 shrink-0" />
                 <span className="text-muted-foreground/60">Swagger URL:</span>
-                <a href={getSwaggerUiUrl(project.swaggerUrl)} target="_blank" rel="noopener noreferrer" className="hover:underline text-sky-500 dark:text-sky-400 font-bold truncate max-w-xs">
+                <a href={getSwaggerUiUrl(project.swaggerUrl)} target="_blank" rel="noopener noreferrer" className="hover:underline text-sky-400 font-bold truncate max-w-xs font-mono">
                   {getSwaggerUiUrl(project.swaggerUrl)}
                 </a>
               </div>
@@ -333,21 +334,31 @@ export default function ProjectDetailsPage() {
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-3 shrink-0 self-start lg:self-auto">
+        <div className="flex flex-wrap items-center gap-3 shrink-0 self-start lg:self-auto">
+          {isAdmin && (
+            <Button
+              onClick={() => router.push(`/projects/${projectId}/settings`)}
+              className="bg-card border border-neutral-250/25 dark:border-white/5 text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-800 font-semibold text-xs gap-1.5 shadow-xs px-3.5 py-1.5 rounded-xl cursor-pointer transition-colors"
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Form Settings
+            </Button>
+          )}
+
           {isAdmin ? (
             <Button
               onClick={handleSyncSwagger}
               disabled={syncing || !project.swaggerUrl}
-              className="bg-card border border-border text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900 font-semibold text-xs gap-1.5 shadow-xs px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+              className="bg-card border border-neutral-250/25 dark:border-white/5 text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-800 font-semibold text-xs gap-1.5 shadow-xs px-3.5 py-1.5 rounded-xl cursor-pointer transition-colors"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin text-sky-500" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin text-sky-400" : ""}`} />
               Sync Swagger
             </Button>
           ) : (
             <Button
               disabled
               variant="outline"
-              className="border-border/60 bg-neutral-50/50 dark:bg-neutral-950/20 text-muted-foreground/70 text-xs gap-1.5 rounded-lg"
+              className="border-neutral-250/20 dark:border-white/5 bg-neutral-50/50 dark:bg-neutral-950/20 text-muted-foreground/70 text-xs gap-1.5 rounded-xl"
             >
               <Lock className="h-3.5 w-3.5" />
               Sync Swagger (Admin Only)
@@ -357,7 +368,7 @@ export default function ProjectDetailsPage() {
           {isQA && (
             <Button
               onClick={handleCreateBugGeneral}
-              className="bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-semibold text-xs gap-1.5 shadow-sm px-3.5 py-1.5 rounded-lg cursor-pointer transition-opacity"
+              className="bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-bold text-xs gap-1.5 shadow-sm px-4 py-1.5 rounded-xl cursor-pointer transition-opacity"
             >
               <Plus className="h-3.5 w-3.5" />
               Report Bug
@@ -368,25 +379,25 @@ export default function ProjectDetailsPage() {
 
       {/* Main Tabs Container */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="bg-neutral-100 dark:bg-neutral-900 border border-border gap-1 rounded-xl w-full sm:w-auto flex sm:inline-flex">
-          <TabsTrigger value="endpoints" className="text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground py-1.5 px-4 h-fit text-xs font-semibold rounded-lg shadow-xs flex-1 sm:flex-none">
+        <TabsList className="bg-neutral-100 dark:bg-neutral-900 border border-neutral-250/20 dark:border-white/5 gap-1 rounded-xl w-full sm:w-auto flex sm:inline-flex p-1">
+          <TabsTrigger value="endpoints" className="text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground py-1.5 px-4 h-fit text-xs font-bold rounded-lg shadow-xs flex-1 sm:flex-none cursor-pointer">
             Endpoints ({endpoints.length})
           </TabsTrigger>
-          <TabsTrigger value="bugs" className="text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground py-1.5 px-4 h-fit text-xs font-semibold rounded-lg shadow-xs flex-1 sm:flex-none">
+          <TabsTrigger value="bugs" className="text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground py-1.5 px-4 h-fit text-xs font-bold rounded-lg shadow-xs flex-1 sm:flex-none cursor-pointer">
             Bugs & Issues ({bugs.length})
           </TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Endpoints */}
         <TabsContent value="endpoints" className="space-y-4">
-          <div className="flex items-center bg-card border border-border rounded-xl px-3 py-1.5 max-w-sm shadow-xs focus-within:ring-2 focus-within:ring-sky-500/20 focus-within:border-sky-500/50 transition-all duration-200">
+          <div className="flex items-center bg-card border border-neutral-250/20 dark:border-white/5 rounded-xl px-3 py-1.5 max-w-sm shadow-xs focus-within:ring-2 focus-within:ring-sky-500/10 focus-within:border-sky-500/35 transition-all duration-200">
             <Search className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />
             <Input
               type="text"
               placeholder="Search endpoints..."
               value={endpointSearch}
               onChange={(e) => setEndpointSearch(e.target.value)}
-              className="bg-transparent border-none text-foreground placeholder-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 h-7 p-0 text-xs w-full"
+              className="bg-transparent border-none text-foreground placeholder-muted-foreground/80 focus-visible:ring-0 focus-visible:ring-offset-0 h-7 p-0 text-xs w-full font-semibold"
             />
           </div>
 
@@ -397,6 +408,7 @@ export default function ProjectDetailsPage() {
           ) : (
             <EndpointTable
               data={filteredEndpoints}
+              bugs={bugs}
               onReportBug={handleReportBugOnEndpoint}
             />
           )}

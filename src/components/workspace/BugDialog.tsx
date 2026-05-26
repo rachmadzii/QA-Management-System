@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/providers/AuthProvider";
 import { db } from "@/lib/firebase";
-import { doc, addDoc, collection, serverTimestamp, updateDoc, getDocs, query, where } from "firebase/firestore";
+import { doc, getDoc, addDoc, collection, serverTimestamp, updateDoc, getDocs, query, where } from "firebase/firestore";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -29,30 +30,27 @@ import {
   Terminal,
   Sparkles,
   Link as LinkIcon,
-  Check
+  Check,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { DEFAULT_BUG_FORM_CONFIG, generateBugSchema } from "@/lib/bugFormUtils";
 
-const bugSchema = z.object({
-  title: z.string().min(5, "Title must be at least 5 characters"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  stepsToReproduce: z.string().min(10, "Steps to reproduce must be at least 10 characters"),
-  expectedResult: z.string().min(5, "Expected result must be at least 5 characters"),
-  actualResult: z.string().min(5, "Actual result must be at least 5 characters"),
-  severity: z.enum(["critical", "major", "minor", "low"]),
-  priority: z.enum(["high", "medium", "low"]),
-  httpStatus: z.string().optional().refine((val) => {
-    if (!val) return true;
-    const num = parseInt(val);
-    return !isNaN(num) && num >= 100 && num <= 599;
-  }, "Must be a valid HTTP status code (100-599)"),
-  endpointId: z.string().optional(),
-  assignedTo: z.string().optional(),
-});
-
-type BugFormValues = z.infer<typeof bugSchema>;
+export interface BugFormValues {
+  title: string;
+  description: string;
+  stepsToReproduce: string;
+  expectedResult: string;
+  actualResult: string;
+  severity: "critical" | "major" | "minor" | "low" | "";
+  priority: "high" | "medium" | "low" | "";
+  httpStatus: string;
+  endpointId: string;
+  assignedTo: string;
+  screenshots?: string[];
+}
 
 interface BugDialogProps {
   open: boolean;
@@ -62,6 +60,16 @@ interface BugDialogProps {
   initialEndpointId?: string;
   onSuccess: () => void;
 }
+
+const normalizeRole = (role: unknown) => String(role || "").trim().toLowerCase();
+const getUserRole = (userData: any) => {
+  const roles = Array.isArray(userData.roles) ? userData.roles : [];
+  return userData.role || userData.userRole || userData.profile?.role || roles[0];
+};
+const isAssignableRole = (role: unknown) => {
+  const normalizedRole = normalizeRole(role);
+  return normalizedRole === "developer" || normalizedRole === "admin";
+};
 
 export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEndpointId, onSuccess }: BugDialogProps) {
   const { user, profile } = useAuth();
@@ -81,6 +89,30 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
   const [assigneeSearchOpen, setAssigneeSearchOpen] = useState(false);
   const assigneeDropdownRef = useRef<HTMLDivElement>(null);
 
+  // 1. Fetch Project Details for Bug Form Configuration
+  const { data: project, isLoading: loadingProject } = useQuery({
+    queryKey: ["project", projectId],
+    queryFn: async () => {
+      const docRef = doc(db, "projects", projectId);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        throw new Error("Project not found");
+      }
+      return docSnap.data();
+    },
+    enabled: open,
+  });
+
+  const config = useMemo(() => {
+    return project?.bugFormConfig
+      ? { ...DEFAULT_BUG_FORM_CONFIG, ...project.bugFormConfig }
+      : DEFAULT_BUG_FORM_CONFIG;
+  }, [project]);
+
+  const dynamicSchema = useMemo(() => {
+    return generateBugSchema(config);
+  }, [config]);
+
   const {
     register,
     handleSubmit,
@@ -89,7 +121,9 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
     reset,
     formState: { errors, isSubmitting },
   } = useForm<BugFormValues>({
-    resolver: zodResolver(bugSchema),
+    resolver: ((values: any, context: any, options: any) => {
+      return zodResolver(dynamicSchema)(values, context, options);
+    }) as any,
     defaultValues: {
       title: "",
       description: "",
@@ -101,6 +135,7 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
       httpStatus: "",
       endpointId: "",
       assignedTo: "",
+      screenshots: [],
     },
   });
 
@@ -130,7 +165,14 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
 
         // Fetch users
         const usersSnapshot = await getDocs(collection(db, "users"));
-        const usersList = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const usersList = usersSnapshot.docs.map(d => {
+          const data = d.data();
+          return {
+            ...data,
+            id: data.id || d.id,
+            role: normalizeRole(getUserRole(data)),
+          };
+        });
         setUsers(usersList);
       } catch (err) {
         console.error("Failed to load dialog configs:", err);
@@ -157,6 +199,7 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
           httpStatus: bugToEdit.httpStatus ? String(bugToEdit.httpStatus) : "",
           endpointId: bugToEdit.endpointId || "",
           assignedTo: bugToEdit.assignedTo || "",
+          screenshots: bugToEdit.screenshotUrls || [],
         });
         setScreenshotUrls(bugToEdit.screenshotUrls || []);
       } else {
@@ -171,11 +214,17 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
           httpStatus: "",
           endpointId: initialEndpointId || "",
           assignedTo: "",
+          screenshots: [],
         });
         setScreenshotUrls([]);
       }
     }
   }, [open, bugToEdit, initialEndpointId, reset]);
+
+  // Update screenshots field in react-hook-form whenever files are uploaded/removed
+  useEffect(() => {
+    setValue("screenshots", screenshotUrls, { shouldValidate: true });
+  }, [screenshotUrls, setValue]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -213,18 +262,19 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
         projectId,
         title: values.title,
         description: values.description,
-        stepsToReproduce: values.stepsToReproduce,
-        expectedResult: values.expectedResult,
-        actualResult: values.actualResult,
-        severity: values.severity,
-        priority: values.priority,
-        httpStatus: values.httpStatus ? parseInt(values.httpStatus) : null,
-        endpointId: values.endpointId || null,
-        endpointPath: selectedEp?.path || null,
-        endpointMethod: selectedEp?.method || null,
-        swaggerLink: selectedEp?.swaggerLink || null,
-        assignedTo: values.assignedTo || null,
-        screenshotUrls,
+        // Nullify fields if they are disabled in project configuration
+        stepsToReproduce: config.stepsToReproduce.enabled ? (values.stepsToReproduce || null) : null,
+        expectedResult: config.expectedResult.enabled ? (values.expectedResult || null) : null,
+        actualResult: config.actualResult.enabled ? (values.actualResult || null) : null,
+        severity: config.severity.enabled ? (values.severity || null) : null,
+        priority: config.priority.enabled ? (values.priority || null) : null,
+        httpStatus: (config.httpStatus.enabled && values.httpStatus) ? parseInt(values.httpStatus) : null,
+        endpointId: config.endpointId.enabled ? (values.endpointId || null) : null,
+        endpointPath: (config.endpointId.enabled && selectedEp) ? (selectedEp.path || null) : null,
+        endpointMethod: (config.endpointId.enabled && selectedEp) ? (selectedEp.method || null) : null,
+        swaggerLink: (config.endpointId.enabled && selectedEp) ? (selectedEp.swaggerLink || null) : null,
+        assignedTo: config.assignedTo.enabled ? (values.assignedTo || null) : null,
+        screenshotUrls: config.screenshots.enabled ? screenshotUrls : [],
         updatedAt: serverTimestamp(),
       };
 
@@ -299,6 +349,11 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
 
   const selectedEndpointObj = endpoints.find(e => e.id === selectedEndpointId);
   const selectedAssigneeObj = users.find(u => u.id === selectedAssignedTo);
+  const assignableUsers = useMemo(() => {
+    return users
+      .filter((u) => isAssignableRole(u.role))
+      .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  }, [users]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -318,7 +373,12 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
           </DialogDescription>
         </DialogHeader>
 
-        {profile?.role !== "qa" && profile?.role !== "admin" ? (
+        {loadingProject || loadingConfig ? (
+          <div className="flex flex-col items-center justify-center py-20 flex-1">
+            <Loader2 className="h-8 w-8 text-sky-500 animate-spin" />
+            <p className="text-muted-foreground text-xs mt-3 animate-pulse">Loading form settings...</p>
+          </div>
+        ) : profile?.role !== "qa" && profile?.role !== "admin" ? (
           <div className="p-6">
             <div className="bg-red-500/10 border border-red-500/25 p-4 rounded-xl flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
@@ -331,10 +391,10 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col">
+          <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
 
             {/* Scrollable Content Viewport */}
-            <div className="p-6 space-y-6 flex-1 max-h-[calc(90vh-200px)] overflow-y-auto pr-4 scrollbar-thin">
+            <div className="p-6 space-y-6 flex-1 overflow-y-auto pr-4 scrollbar-thin">
 
               {/* Section 1: Bug Information */}
               <div className="space-y-4">
@@ -343,12 +403,14 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-2 space-y-1.5">
-                    <Label htmlFor="bug-title" className="text-xs text-foreground font-semibold">Bug Title</Label>
+                  <div className={cn("space-y-1.5", config.httpStatus?.enabled ? "md:col-span-2" : "md:col-span-3")}>
+                    <Label htmlFor="bug-title" className="text-xs text-foreground font-semibold">
+                      Bug Title {config.title?.required && <span className="text-red-500">*</span>}
+                    </Label>
                     <Input
                       id="bug-title"
                       placeholder="e.g. 500 Internal Server Error on Authentication"
-                      className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs h-9"
+                      className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs h-9 font-semibold"
                       {...register("title")}
                     />
                     {errors.title && (
@@ -356,92 +418,116 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
                     )}
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label htmlFor="bug-http" className="text-xs text-foreground font-semibold">HTTP Status Code</Label>
-                    <Input
-                      id="bug-http"
-                      placeholder="e.g. 500"
-                      type="number"
-                      className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs h-9 font-mono"
-                      {...register("httpStatus")}
-                    />
-                    {errors.httpStatus && (
-                      <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.httpStatus.message}</p>
+                  {config.httpStatus?.enabled && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="bug-http" className="text-xs text-foreground font-semibold">
+                        HTTP Status Code {config.httpStatus?.required && <span className="text-red-500">*</span>}
+                      </Label>
+                      <Input
+                        id="bug-http"
+                        placeholder="e.g. 500"
+                        type="number"
+                        className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs h-9 font-mono font-bold"
+                        {...register("httpStatus")}
+                      />
+                      {errors.httpStatus && (
+                        <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.httpStatus.message}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {(config.severity?.enabled || config.priority?.enabled) && (
+                  <div className={cn("grid grid-cols-1 gap-4 pt-1", 
+                    config.severity?.enabled && config.priority?.enabled ? "md:grid-cols-2" : "md:grid-cols-1"
+                  )}>
+                    {/* Severity Badge Selector */}
+                    {config.severity?.enabled && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-foreground font-semibold">
+                          Severity Level {config.severity?.required && <span className="text-red-500">*</span>}
+                        </Label>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {[
+                            { key: "critical", label: "Critical", dot: "bg-red-500", active: "bg-red-500/10 text-red-400 border-red-500/35 shadow-[0_0_8px_rgba(239,68,68,0.15)]" },
+                            { key: "major", label: "Major", dot: "bg-orange-500", active: "bg-orange-500/10 text-orange-400 border-orange-500/35 shadow-[0_0_8px_rgba(245,158,11,0.15)]" },
+                            { key: "minor", label: "Minor", dot: "bg-yellow-500", active: "bg-yellow-500/10 text-yellow-400 border-yellow-500/35 shadow-[0_0_8px_rgba(234,179,8,0.15)]" },
+                            { key: "low", label: "Low", dot: "bg-neutral-400", active: "bg-neutral-100 dark:bg-neutral-900 border-neutral-300 dark:border-white/10 text-neutral-600 dark:text-neutral-300" }
+                          ].map((item) => {
+                             const isSel = selectedSeverity === item.key;
+                             return (
+                               <button
+                                 key={item.key}
+                                 type="button"
+                                 onClick={() => setValue("severity", item.key as any)}
+                                 className={cn(
+                                   "flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl border border-neutral-250/20 dark:border-white/5 bg-neutral-100/50 dark:bg-neutral-900/60 text-[10px] font-bold text-muted-foreground hover:bg-neutral-150 dark:hover:bg-neutral-900 transition-all cursor-pointer",
+                                   isSel && item.active
+                                 )}
+                               >
+                                 <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", item.dot)} />
+                                 {item.label}
+                               </button>
+                             );
+                          })}
+                        </div>
+                        {errors.severity && (
+                          <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.severity.message}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Priority Badge Selector */}
+                    {config.priority?.enabled && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-foreground font-semibold">
+                          Priority Level {config.priority?.required && <span className="text-red-500">*</span>}
+                        </Label>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {[
+                            { key: "high", label: "High", active: "bg-red-500/10 text-red-400 border-red-500/30 shadow-[0_0_8px_rgba(239,68,68,0.15)]" },
+                            { key: "medium", label: "Medium", active: "bg-sky-500/10 text-sky-400 border-sky-500/30 shadow-[0_0_8px_rgba(56,189,248,0.15)]" },
+                            { key: "low", label: "Low", active: "bg-neutral-100 dark:bg-neutral-900 border-neutral-355 dark:border-white/10 text-neutral-600 dark:text-neutral-300" }
+                          ].map((item) => {
+                            const isSel = selectedPriority === item.key;
+                            return (
+                              <button
+                                key={item.key}
+                                type="button"
+                                onClick={() => setValue("priority", item.key as any)}
+                                className={cn(
+                                  "flex items-center justify-center px-2 py-1.5 rounded-xl border border-neutral-250/20 dark:border-white/5 bg-neutral-100/50 dark:bg-neutral-900/60 text-[10px] font-bold text-muted-foreground hover:bg-neutral-150 dark:hover:bg-neutral-900 transition-all cursor-pointer",
+                                  isSel && item.active
+                                )}
+                              >
+                                {item.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {errors.priority && (
+                          <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.priority.message}</p>
+                        )}
+                      </div>
                     )}
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                  {/* Severity Badge Selector */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-foreground font-semibold">Severity Level</Label>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {[
-                        { key: "critical", label: "Critical", dot: "bg-red-500", active: "bg-red-500/10 text-red-650 dark:text-red-400 border-red-500/35" },
-                        { key: "major", label: "Major", dot: "bg-orange-500", active: "bg-orange-500/10 text-orange-650 dark:text-orange-400 border-orange-500/35" },
-                        { key: "minor", label: "Minor", dot: "bg-yellow-500", active: "bg-yellow-500/10 text-yellow-650 dark:text-yellow-400 border-yellow-500/35" },
-                        { key: "low", label: "Low", dot: "bg-neutral-400", active: "bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border-border" }
-                      ].map((item) => {
-                        const isSel = selectedSeverity === item.key;
-                        return (
-                          <button
-                            key={item.key}
-                            type="button"
-                            onClick={() => setValue("severity", item.key as any)}
-                            className={cn(
-                              "flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg border border-border bg-card text-[11px] font-semibold text-muted-foreground hover:bg-neutral-50 dark:hover:bg-neutral-950 transition-colors cursor-pointer",
-                              isSel && item.active
-                            )}
-                          >
-                            <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", item.dot)} />
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Priority Badge Selector */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-foreground font-semibold">Priority Level</Label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[
-                        { key: "high", label: "High", active: "bg-red-500/10 text-red-650 dark:text-red-400 border-red-500/30" },
-                        { key: "medium", label: "Medium", active: "bg-sky-500/10 text-sky-650 dark:text-sky-400 border-sky-500/30" },
-                        { key: "low", label: "Low", active: "bg-neutral-100 dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300 border-border" }
-                      ].map((item) => {
-                        const isSel = selectedPriority === item.key;
-                        return (
-                          <button
-                            key={item.key}
-                            type="button"
-                            onClick={() => setValue("priority", item.key as any)}
-                            className={cn(
-                              "flex items-center justify-center px-2 py-1.5 rounded-lg border border-border bg-card text-[11px] font-semibold text-muted-foreground hover:bg-neutral-50 dark:hover:bg-neutral-950 transition-colors cursor-pointer",
-                              isSel && item.active
-                            )}
-                          >
-                            {item.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Section 2: Issue Details */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 border-b border-border pb-1.5">
+                <div className="flex items-center gap-2 border-b border-neutral-250/20 dark:border-white/5 pb-1.5">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Section 2: Issue Details</span>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="bug-desc" className="text-xs text-foreground font-semibold">Problem Description</Label>
+                  <Label htmlFor="bug-desc" className="text-xs text-foreground font-semibold">
+                    Problem Description {config.description?.required && <span className="text-red-500">*</span>}
+                  </Label>
                   <Textarea
                     id="bug-desc"
                     placeholder="Describe the issue in detail, including any specific payloads, request headers, or context."
-                    className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3"
+                    className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3 font-semibold"
                     {...register("description")}
                   />
                   {errors.description && (
@@ -449,281 +535,318 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
                   )}
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="bug-steps" className="text-xs text-foreground font-semibold">Steps to Reproduce</Label>
-                  <Textarea
-                    id="bug-steps"
-                    placeholder="1. Post invalid authorization credentials to /auth/login&#13;2. Observe return payload structures..."
-                    className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3"
-                    {...register("stepsToReproduce")}
-                  />
-                  {errors.stepsToReproduce && (
-                    <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.stepsToReproduce.message}</p>
-                  )}
-                </div>
+                {config.stepsToReproduce?.enabled && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="bug-steps" className="text-xs text-foreground font-semibold">
+                      Steps to Reproduce {config.stepsToReproduce?.required && <span className="text-red-500">*</span>}
+                    </Label>
+                    <Textarea
+                      id="bug-steps"
+                      placeholder="1. Post invalid credentials to /auth/login&#13;2. Observe returned structural validation failure..."
+                      className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3 font-semibold"
+                      {...register("stepsToReproduce")}
+                    />
+                    {errors.stepsToReproduce && (
+                      <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.stepsToReproduce.message}</p>
+                    )}
+                  </div>
+                )}
 
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="bug-expected" className="text-xs text-foreground font-semibold">Expected Result</Label>
-                    <Textarea
-                      id="bug-expected"
-                      placeholder="e.g. 401 Unauthorized status with a JSON error payload."
-                      className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3"
-                      {...register("expectedResult")}
-                    />
-                    {errors.expectedResult && (
-                      <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.expectedResult.message}</p>
+                {(config.expectedResult?.enabled || config.actualResult?.enabled) && (
+                  <div className="grid grid-cols-1 gap-4">
+                    {config.expectedResult?.enabled && (
+                      <div className="space-y-1.5">
+                        <Label htmlFor="bug-expected" className="text-xs text-foreground font-semibold">
+                          Expected Result {config.expectedResult?.required && <span className="text-red-500">*</span>}
+                        </Label>
+                        <Textarea
+                          id="bug-expected"
+                          placeholder="e.g. 401 Unauthorized status with a JSON error payload."
+                          className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3 font-semibold"
+                          {...register("expectedResult")}
+                        />
+                        {errors.expectedResult && (
+                          <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.expectedResult.message}</p>
+                        )}
+                      </div>
+                    )}
+                    {config.actualResult?.enabled && (
+                      <div className="space-y-1.5">
+                        <Label htmlFor="bug-actual" className="text-xs text-foreground font-semibold">
+                          Actual Result {config.actualResult?.required && <span className="text-red-500">*</span>}
+                        </Label>
+                        <Textarea
+                          id="bug-actual"
+                          placeholder="e.g. 500 Server Error showing a DB execution stacktrace."
+                          className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3 font-semibold"
+                          {...register("actualResult")}
+                        />
+                        {errors.actualResult && (
+                          <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.actualResult.message}</p>
+                        )}
+                      </div>
                     )}
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="bug-actual" className="text-xs text-foreground font-semibold">Actual Result</Label>
-                    <Textarea
-                      id="bug-actual"
-                      placeholder="e.g. 500 Server Error showing a DB execution stacktrace."
-                      className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3"
-                      {...register("actualResult")}
-                    />
-                    {errors.actualResult && (
-                      <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.actualResult.message}</p>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Section 3: Assignment & Endpoint */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 border-b border-border pb-1.5">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Section 3: Assignment & Endpoint</span>
-                </div>
+              {(config.endpointId?.enabled || config.assignedTo?.enabled) && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b border-neutral-250/20 dark:border-white/5 pb-1.5">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Section 3: Assignment & Endpoint</span>
+                  </div>
 
-                <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
 
-                  {/* Custom Searchable Endpoint Selector */}
-                  <div className="space-y-1.5" ref={dropdownRef}>
-                    <Label className="text-xs text-foreground font-semibold flex items-center gap-1">
-                      <LinkIcon className="h-3 w-3 text-muted-foreground" />
-                      Linked API Endpoint
-                    </Label>
+                    {/* Custom Searchable Endpoint Selector */}
+                    {config.endpointId?.enabled && (
+                      <div className="space-y-1.5" ref={dropdownRef}>
+                        <Label className="text-xs text-foreground font-semibold flex items-center gap-1">
+                          <LinkIcon className="h-3 w-3 text-muted-foreground" />
+                          Linked API Endpoint {config.endpointId?.required && <span className="text-red-500">*</span>}
+                        </Label>
 
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setEndpointSearchOpen(!endpointSearchOpen)}
-                        className="flex h-9 w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-sky-500/10 cursor-pointer"
-                      >
-                        {selectedEndpointObj ? (
-                          <div className="flex items-center gap-2 truncate">
-                            <span className={cn("px-1.5 py-0.2 rounded font-mono text-[9px] font-extrabold tracking-wide", getMethodColor(selectedEndpointObj.method))}>
-                              {selectedEndpointObj.method}
-                            </span>
-                            <span className="font-mono text-[11px] text-foreground truncate">{selectedEndpointObj.path}</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">None (General Bug)</span>
-                        )}
-                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
-                      </button>
-
-                      <AnimatePresence>
-                        {endpointSearchOpen && (
-                          <motion.div
-                            initial={{ opacity: 0, y: -4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute z-50 mt-1 w-full rounded-xl border border-border bg-card shadow-lg p-2 space-y-2 max-h-[220px] flex flex-col"
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setEndpointSearchOpen(!endpointSearchOpen)}
+                            className="flex h-9 w-full items-center justify-between rounded-xl border border-neutral-250/20 dark:border-white/5 bg-neutral-100/50 dark:bg-neutral-900/60 px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-sky-500/10 cursor-pointer"
                           >
-                            <div className="relative flex items-center shrink-0">
-                              <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                              <Input
-                                placeholder="Search endpoints..."
-                                value={endpointSearchText}
-                                onChange={(e) => setEndpointSearchText(e.target.value)}
-                                className="h-8 pl-8 text-xs bg-card border-border rounded-lg"
-                              />
-                            </div>
-                            <div className="overflow-y-auto space-y-0.5 flex-1 pr-1 scrollbar-thin">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setValue("endpointId", "");
-                                  setEndpointSearchOpen(false);
-                                }}
-                                className="flex w-full items-center justify-between px-2 py-1.5 text-xs rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 font-semibold cursor-pointer text-muted-foreground"
-                              >
-                                <span>None (General Bug)</span>
-                                {!selectedEndpointId && <Check className="h-3.5 w-3.5 text-sky-500" />}
-                              </button>
+                            {selectedEndpointObj ? (
+                              <div className="flex items-center gap-2 truncate">
+                                <span className={cn("px-1.5 py-0.2 rounded font-mono text-[9px] font-extrabold tracking-wide", getMethodColor(selectedEndpointObj.method))}>
+                                  {selectedEndpointObj.method}
+                                </span>
+                                <span className="font-mono text-[11px] text-foreground truncate">{selectedEndpointObj.path}</span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">None (General Bug)</span>
+                            )}
+                            <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+                          </button>
 
-                              {filteredEndpoints.length === 0 ? (
-                                <p className="text-[10px] text-center text-muted-foreground py-4">No matching endpoints found</p>
-                              ) : (
-                                filteredEndpoints.map((ep) => {
-                                  const isSel = selectedEndpointId === ep.id;
-                                  return (
-                                    <button
-                                      key={ep.id}
-                                      type="button"
-                                      onClick={() => {
-                                        setValue("endpointId", ep.id);
-                                        setEndpointSearchOpen(false);
-                                      }}
-                                      className="flex w-full flex-col text-left px-2 py-1.5 text-xs rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer group"
-                                    >
-                                      <div className="flex items-center justify-between w-full">
-                                        <div className="flex items-center gap-2 truncate">
-                                          <span className={cn("px-1 py-0.2 rounded font-mono text-[8px] font-extrabold", getMethodColor(ep.method))}>
-                                            {ep.method}
-                                          </span>
-                                          <span className="font-mono text-[11px] truncate text-foreground group-hover:text-sky-500 transition-colors">{ep.path}</span>
-                                          <span className="bg-neutral-100 dark:bg-neutral-950 px-1 py-0.2 rounded text-[8px] font-semibold text-muted-foreground uppercase border border-border">
-                                            {ep.tag}
+                          <AnimatePresence>
+                            {endpointSearchOpen && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute z-50 mt-1 w-full rounded-xl border border-neutral-250/20 dark:border-white/10 bg-card shadow-lg p-2 space-y-2 max-h-[220px] flex flex-col"
+                              >
+                                <div className="relative flex items-center shrink-0">
+                                  <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                  <Input
+                                    placeholder="Search endpoints..."
+                                    value={endpointSearchText}
+                                    onChange={(e) => setEndpointSearchText(e.target.value)}
+                                    className="h-8 pl-8 text-xs bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 rounded-lg"
+                                  />
+                                </div>
+                                <div className="overflow-y-auto space-y-0.5 flex-1 pr-1 scrollbar-thin">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setValue("endpointId", "");
+                                      setEndpointSearchOpen(false);
+                                    }}
+                                    className="flex w-full items-center justify-between px-2 py-1.5 text-xs rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 font-semibold cursor-pointer text-muted-foreground"
+                                  >
+                                    <span>None (General Bug)</span>
+                                    {!selectedEndpointId && <Check className="h-3.5 w-3.5 text-sky-500" />}
+                                  </button>
+
+                                  {filteredEndpoints.length === 0 ? (
+                                    <p className="text-[10px] text-center text-muted-foreground py-4">No matching endpoints found</p>
+                                  ) : (
+                                    filteredEndpoints.map((ep) => {
+                                      const isSel = selectedEndpointId === ep.id;
+                                      return (
+                                        <button
+                                          key={ep.id}
+                                          type="button"
+                                          onClick={() => {
+                                            setValue("endpointId", ep.id);
+                                            setEndpointSearchOpen(false);
+                                          }}
+                                          className="flex w-full flex-col text-left px-2 py-1.5 text-xs rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer group"
+                                        >
+                                          <div className="flex items-center justify-between w-full">
+                                            <div className="flex items-center gap-2 truncate">
+                                              <span className={cn("px-1 py-0.2 rounded font-mono text-[8px] font-extrabold", getMethodColor(ep.method))}>
+                                                {ep.method}
+                                              </span>
+                                              <span className="font-mono text-[11px] truncate text-foreground group-hover:text-sky-500 transition-colors">{ep.path}</span>
+                                              <span className="bg-neutral-100 dark:bg-neutral-950 px-1 py-0.2 rounded text-[8px] font-semibold text-muted-foreground uppercase border border-border">
+                                                {ep.tag}
+                                              </span>
+                                            </div>
+                                            {isSel && <Check className="h-3.5 w-3.5 text-sky-500" />}
+                                          </div>
+                                        </button>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                        {errors.endpointId && (
+                          <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.endpointId.message}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Assignee Custom Dropdown */}
+                    {config.assignedTo?.enabled && (
+                      <div className="space-y-1.5" ref={assigneeDropdownRef}>
+                        <Label className="text-xs text-foreground font-semibold flex items-center gap-1">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          Assignee {config.assignedTo?.required && <span className="text-red-500">*</span>}
+                        </Label>
+
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setAssigneeSearchOpen(!assigneeSearchOpen)}
+                            className="flex h-9 w-full items-center justify-between rounded-xl border border-neutral-250/20 dark:border-white/5 bg-neutral-100/50 dark:bg-neutral-900/60 px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-sky-500/10 cursor-pointer"
+                          >
+                            {selectedAssigneeObj ? (
+                              <div className="flex items-center gap-2">
+                                <div className="h-4.5 w-4.5 rounded-full bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-[10px] text-indigo-500 uppercase font-extrabold font-mono">
+                                  {selectedAssigneeObj.name?.substring(0, 2)}
+                                </div>
+                                <span className="font-semibold text-foreground">{selectedAssigneeObj.name}</span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">Unassigned</span>
+                            )}
+                            <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+                          </button>
+
+                          <AnimatePresence>
+                            {assigneeSearchOpen && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute z-50 mt-1 w-full rounded-xl border border-neutral-250/20 dark:border-white/10 bg-card shadow-lg p-2 space-y-1 max-h-[180px] overflow-y-auto"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setValue("assignedTo", "");
+                                    setAssigneeSearchOpen(false);
+                                  }}
+                                  className="flex w-full items-center justify-between px-2 py-1.5 text-xs rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 font-semibold cursor-pointer text-muted-foreground"
+                                >
+                                  <span>Unassigned</span>
+                                  {!selectedAssignedTo && <Check className="h-3.5 w-3.5 text-sky-500" />}
+                                </button>
+
+                                {assignableUsers.length === 0 ? (
+                                  <p className="text-[10px] text-center text-muted-foreground py-4">
+                                    No developers or admins found
+                                  </p>
+                                ) : (
+                                  assignableUsers.map((u) => {
+                                    const isSel = selectedAssignedTo === u.id;
+                                    return (
+                                      <button
+                                        key={u.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setValue("assignedTo", u.id);
+                                          setAssigneeSearchOpen(false);
+                                        }}
+                                        className="flex w-full items-center justify-between px-2 py-1.5 text-xs rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <div className="h-4.5 w-4.5 rounded-full bg-neutral-100 dark:bg-neutral-950 border border-neutral-250/20 dark:border-white/5 flex items-center justify-center text-[9px] font-extrabold">
+                                            {u.name?.substring(0, 2).toUpperCase()}
+                                          </div>
+                                          <span className="font-semibold text-foreground">{u.name}</span>
+                                          <span className="text-[9px] text-muted-foreground bg-neutral-100 dark:bg-neutral-950 px-1 py-0.2 rounded border border-border">
+                                            {u.role}
                                           </span>
                                         </div>
                                         {isSel && <Check className="h-3.5 w-3.5 text-sky-500" />}
-                                      </div>
-                                    </button>
-                                  );
-                                })
-                              )}
-                            </div>
-                          </motion.div>
+                                      </button>
+                                    );
+                                  })
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                        {errors.assignedTo && (
+                          <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.assignedTo.message}</p>
                         )}
-                      </AnimatePresence>
-                    </div>
+                      </div>
+                    )}
+
                   </div>
-
-                  {/* Assignee Custom Dropdown */}
-                  <div className="space-y-1.5" ref={assigneeDropdownRef}>
-                    <Label className="text-xs text-foreground font-semibold flex items-center gap-1">
-                      <User className="h-3 w-3 text-muted-foreground" />
-                      Assignee
-                    </Label>
-
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setAssigneeSearchOpen(!assigneeSearchOpen)}
-                        className="flex h-9 w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-sky-500/10 cursor-pointer"
-                      >
-                        {selectedAssigneeObj ? (
-                          <div className="flex items-center gap-2">
-                            <div className="h-4.5 w-4.5 rounded-full bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-[10px] text-indigo-500 uppercase font-extrabold font-mono">
-                              {selectedAssigneeObj.name?.substring(0, 2)}
-                            </div>
-                            <span className="font-semibold text-foreground">{selectedAssigneeObj.name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">Unassigned</span>
-                        )}
-                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
-                      </button>
-
-                      <AnimatePresence>
-                        {assigneeSearchOpen && (
-                          <motion.div
-                            initial={{ opacity: 0, y: -4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute z-50 mt-1 w-full rounded-xl border border-border bg-card shadow-lg p-2 space-y-1 max-h-[180px] overflow-y-auto"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setValue("assignedTo", "");
-                                setAssigneeSearchOpen(false);
-                              }}
-                              className="flex w-full items-center justify-between px-2 py-1.5 text-xs rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 font-semibold cursor-pointer text-muted-foreground"
-                            >
-                              <span>Unassigned</span>
-                              {!selectedAssignedTo && <Check className="h-3.5 w-3.5 text-sky-500" />}
-                            </button>
-
-                            {users
-                              .filter((u) => u.role === "developer" || u.role === "admin")
-                              .map((u) => {
-                                const isSel = selectedAssignedTo === u.id;
-                                return (
-                                  <button
-                                    key={u.id}
-                                    type="button"
-                                    onClick={() => {
-                                      setValue("assignedTo", u.id);
-                                      setAssigneeSearchOpen(false);
-                                    }}
-                                    className="flex w-full items-center justify-between px-2 py-1.5 text-xs rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <div className="h-4.5 w-4.5 rounded-full bg-neutral-100 dark:bg-neutral-950 border border-border flex items-center justify-center text-[9px] font-extrabold">
-                                        {u.name?.substring(0, 2).toUpperCase()}
-                                      </div>
-                                      <span className="font-semibold text-foreground">{u.name}</span>
-                                      <span className="text-[9px] text-muted-foreground bg-neutral-100 dark:bg-neutral-950 px-1 py-0.2 rounded border border-border">
-                                        {u.role}
-                                      </span>
-                                    </div>
-                                    {isSel && <Check className="h-3.5 w-3.5 text-sky-500" />}
-                                  </button>
-                                );
-                              })}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-
                 </div>
-              </div>
+              )}
 
               {/* Section 4: Attachments */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 border-b border-border pb-1.5">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Section 4: Attachments</span>
-                </div>
+              {config.screenshots?.enabled && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b border-neutral-250/20 dark:border-white/5 pb-1.5">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Section 4: Attachments</span>
+                  </div>
 
-                <div className="space-y-2.5">
-                  <Label className="text-xs text-foreground font-semibold">Screenshots & Evidence</Label>
-                  <UploadDropzone
-                    projectId={projectId}
-                    onUploadSuccess={(url) => setScreenshotUrls(prev => [...prev, url])}
-                  />
+                  <div className="space-y-2.5">
+                    <Label className="text-xs text-foreground font-semibold">
+                      Screenshots & Evidence {config.screenshots?.required && <span className="text-red-500">*</span>}
+                    </Label>
+                    <UploadDropzone
+                      projectId={projectId}
+                      onUploadSuccess={(url) => setScreenshotUrls(prev => [...prev, url])}
+                    />
+                    {errors.screenshots && (
+                      <p className="text-[10px] text-red-500 font-semibold mt-1">{errors.screenshots.message}</p>
+                    )}
 
-                  {screenshotUrls.length > 0 && (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
-                      {screenshotUrls.map((url, idx) => (
-                        <div key={idx} className="relative group rounded-xl overflow-hidden aspect-video border border-border bg-card flex items-center justify-center">
-                          <img src={url} alt="screenshot" className="object-cover w-full h-full" />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveScreenshot(url)}
-                            className="absolute top-1.5 right-1.5 bg-neutral-900/90 dark:bg-black/90 hover:bg-red-500 rounded-full p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                    {screenshotUrls.length > 0 && (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
+                        {screenshotUrls.map((url, idx) => (
+                          <div key={idx} className="relative group rounded-2xl overflow-hidden aspect-video border border-neutral-250/20 dark:border-white/5 bg-card flex items-center justify-center">
+                            <img src={url} alt="screenshot" className="object-cover w-full h-full" />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveScreenshot(url)}
+                              className="absolute top-1.5 right-1.5 bg-neutral-900/90 dark:bg-black/90 hover:bg-red-500 rounded-full p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
             </div>
 
             {/* Sticky Footer Action Bar */}
-            <DialogFooter className="pt-4 pb-8 px-6 border-t border-border/80 bg-neutral-50/20 dark:bg-neutral-900/10 gap-2 shrink-0">
+            <DialogFooter className="pt-4 pb-8 px-6 border-t border-neutral-250/20 dark:border-white/5 bg-neutral-50/20 dark:bg-neutral-900/10 gap-2 shrink-0">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="bg-transparent border-border text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-xl text-xs px-4 h-9 cursor-pointer"
+                className="bg-transparent border-neutral-250/20 dark:border-white/5 text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-xl text-xs px-4 h-9 cursor-pointer"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-semibold shadow-xs rounded-xl text-xs px-4 h-9 cursor-pointer transition-opacity"
+                className="bg-gradient-to-r from-sky-500 to-indigo-600 hover:opacity-95 text-white font-bold text-xs px-4 h-9 cursor-pointer transition-opacity rounded-xl"
               >
                 {isSubmitting ? "Logging Bug..." : isEditing ? "Save Changes" : "Submit Bug Report"}
               </Button>
