@@ -38,7 +38,6 @@ export function UploadDropzone({ projectId, onUploadSuccess, onUploadStart }: Up
         onUploadSuccess(url);
         toast.success(`Uploaded: ${file.name}`);
       } catch (err: any) {
-        console.error(err);
         toast.error(err.message || "Failed to upload image. Verify Firebase credentials.");
       } finally {
         setUploading(false);

@@ -181,7 +181,6 @@ export default function BugDetailsPage() {
       refetchBug();
       refetchActivities();
     } catch (err: any) {
-      console.error(err);
       toast.error(err.message || "Failed to update status");
     }
   };
@@ -220,7 +219,6 @@ export default function BugDetailsPage() {
       refetchBug();
       refetchActivities();
     } catch (err: any) {
-      console.error(err);
       toast.error(err.message || "Failed to update assignee");
     }
   };
@@ -245,7 +243,6 @@ export default function BugDetailsPage() {
       toast.success("Comment added.");
       refetchActivities();
     } catch (err: any) {
-      console.error(err);
       toast.error(err.message || "Failed to post comment");
     } finally {
       setSubmittingComment(false);

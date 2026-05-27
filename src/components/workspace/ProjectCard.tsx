@@ -56,7 +56,6 @@ export function ProjectCard({ project, onEdit, onRefresh }: ProjectCardProps) {
       toast.success("Project deleted successfully");
       onRefresh();
     } catch (err: any) {
-      console.error(err);
       toast.error(err.message || "Failed to delete project");
     }
   };

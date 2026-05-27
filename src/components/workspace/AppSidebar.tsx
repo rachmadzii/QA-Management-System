@@ -39,7 +39,7 @@ export function AppSidebar({ collapsed, setCollapsed }: AppSidebarProps) {
         }));
         setRecentProjects(projectsList);
       } catch (err) {
-        console.error("Error loading recent projects in sidebar:", err);
+        // Silently handle error
       }
     };
 

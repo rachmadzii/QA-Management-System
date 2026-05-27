@@ -64,7 +64,6 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, data.email, data.password);
       toast.success("Successfully logged in!");
     } catch (error: any) {
-      console.error(error);
       toast.error(error.message || "Failed to log in");
     } finally {
       setLoading(false);
@@ -94,7 +93,6 @@ export default function LoginPage() {
 
       toast.success("Account created successfully!");
     } catch (error: any) {
-      console.error(error);
       toast.error(error.message || "Failed to sign up");
     } finally {
       setLoading(false);

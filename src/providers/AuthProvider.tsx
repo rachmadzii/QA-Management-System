@@ -98,7 +98,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setLoading(false);
           }
         }, (err) => {
-          console.error("Error listening to user profile updates:", err);
           setLoading(false);
         });
       } else {

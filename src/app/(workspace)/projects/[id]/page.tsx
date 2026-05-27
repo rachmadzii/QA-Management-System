@@ -237,7 +237,6 @@ export default function ProjectDetailsPage() {
       toast.success(`Synced Swagger successfully! Imported ${parsedEndpoints.length} endpoints.`, { id: toastId });
       refetchEndpoints();
     } catch (err: any) {
-      console.error(err);
       toast.error(err.message || "Failed to sync Swagger spec", { id: toastId });
     } finally {
       setSyncing(false);
@@ -408,7 +407,6 @@ export default function ProjectDetailsPage() {
           ) : (
             <EndpointTable
               data={filteredEndpoints}
-              bugs={bugs}
               onReportBug={handleReportBugOnEndpoint}
             />
           )}
