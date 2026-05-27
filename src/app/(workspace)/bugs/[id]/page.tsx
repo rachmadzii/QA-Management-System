@@ -61,6 +61,8 @@ export default function BugDetailsPage() {
   const { user, profile } = useAuth();
 
   const bugId = params.id as string;
+  // QA and Admin can assign bugs to developers/admins
+  const isQAOrAdmin = profile?.role === "qa" || profile?.role === "admin";
   const isDeveloperOrAdmin = profile?.role === "developer" || profile?.role === "admin";
   const isQAOrAdmin = profile?.role === "qa" || profile?.role === "admin";
 
@@ -539,7 +541,7 @@ export default function BugDetailsPage() {
               {/* Assignee Selector */}
               <div className="space-y-1.5">
                 <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">Assignee</Label>
-                {isDeveloperOrAdmin ? (
+                {isQAOrAdmin ? (
                   <Select onValueChange={handleAssigneeChange} value={bug.assignedTo || "unassigned"}>
                     <SelectTrigger className="bg-card border border-border text-foreground focus:ring-sky-500/20 rounded-lg w-full">
                       <SelectValue>
@@ -549,7 +551,13 @@ export default function BugDetailsPage() {
                     <SelectContent className="bg-card border border-border text-foreground text-xs rounded-xl shadow-md">
                       <SelectItem value="unassigned" className="rounded-lg font-semibold">Unassigned</SelectItem>
                       {users
-                        .filter(u => u.role === "developer" || u.role === "admin")
+                        .filter(u => {
+                          // Safely check role - allow developer and admin to be assigned
+                          const userRole = (u.role || "").trim().toLowerCase();
+                          const isAssignable = userRole === "developer" || userRole === "admin";
+                          return isAssignable;
+                        })
+                        .sort((a, b) => (a.name || "").localeCompare(b.name || ""))
                         .map(u => (
                           <SelectItem key={u.id} value={u.id} className="rounded-lg font-semibold">
                             {u.name}
