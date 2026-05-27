@@ -203,7 +203,7 @@ export function EndpointTable({ data, onReportBug }: EndpointTableProps) {
   return (
     <div className="space-y-4">
       {/* Table Container */}
-      <div className="rounded-2xl border border-border overflow-hidden bg-card/60 shadow-xs">
+      <div className="rounded-xl border border-border overflow-hidden bg-card/60 shadow-xs">
         <Table className="relative">
           <TableHeader className="bg-neutral-50/75 dark:bg-neutral-900/60 sticky top-0 z-10 shadow-xs border-b border-border backdrop-blur-xs">
             {table.getHeaderGroups().map((headerGroup) => (

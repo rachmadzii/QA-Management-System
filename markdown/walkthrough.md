@@ -1,6 +1,6 @@
-# QABug Workspace Walkthrough
+# SwagBug Workspace Walkthrough
 
-All development phases of **QABug** have been successfully implemented, verified, and compiled. Below is a comprehensive summary of the components built and the verification results.
+All development phases of **SwagBug** have been successfully implemented, verified, and compiled. Below is a comprehensive summary of the components built and the verification results.
 
 ---
 

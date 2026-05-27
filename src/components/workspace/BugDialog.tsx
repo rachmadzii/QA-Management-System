@@ -82,7 +82,7 @@ const getUserRole = (userData: any) => {
 };
 const isAssignableRole = (role: unknown) => {
   const normalizedRole = normalizeRole(role);
-  return normalizedRole === 'developer' || normalizedRole === 'admin';
+  return normalizedRole === 'developer';
 };
 
 export function BugDialog({
@@ -699,7 +699,7 @@ export function BugDialog({
                   <Textarea
                     id="bug-desc"
                     placeholder="Describe the issue in detail, including any specific payloads, request headers, or context."
-                    className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3 font-semibold"
+                    className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[100px] leading-relaxed p-3 font-semibold"
                     {...register('description')}
                   />
                   {errors.description && (
@@ -723,7 +723,7 @@ export function BugDialog({
                     <Textarea
                       id="bug-steps"
                       placeholder="1. Post invalid credentials to /auth/login&#13;2. Observe returned structural validation failure..."
-                      className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3 font-semibold"
+                      className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[100px] leading-relaxed p-3 font-semibold"
                       {...register('stepsToReproduce')}
                     />
                     {errors.stepsToReproduce && (
@@ -751,7 +751,7 @@ export function BugDialog({
                         <Textarea
                           id="bug-expected"
                           placeholder="e.g. 401 Unauthorized status with a JSON error payload."
-                          className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3 font-semibold"
+                          className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[100px] leading-relaxed p-3 font-semibold"
                           {...register('expectedResult')}
                         />
                         {errors.expectedResult && (
@@ -775,7 +775,7 @@ export function BugDialog({
                         <Textarea
                           id="bug-actual"
                           placeholder="e.g. 500 Server Error showing a DB execution stacktrace."
-                          className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed p-3 font-semibold"
+                          className="bg-neutral-100/50 dark:bg-neutral-900/60 border border-neutral-250/20 dark:border-white/5 text-foreground placeholder-muted-foreground/60 focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[100px] leading-relaxed p-3 font-semibold"
                           {...register('actualResult')}
                         />
                         {errors.actualResult && (
@@ -876,7 +876,7 @@ export function BugDialog({
                                   </button>
 
                                   {filteredEndpoints.length === 0 ? (
-                                    <p className="text-[10px] text-center text-muted-foreground py-4">
+                                    <p className="text-xs text-center text-muted-foreground py-4">
                                       No matching endpoints found
                                     </p>
                                   ) : (
@@ -991,7 +991,7 @@ export function BugDialog({
                                 </button>
 
                                 {assignableUsers.length === 0 ? (
-                                  <p className="text-[10px] text-center text-muted-foreground py-4">
+                                  <p className="text-xs text-center text-muted-foreground py-4">
                                     No developers or admins found
                                   </p>
                                 ) : (
@@ -1016,7 +1016,7 @@ export function BugDialog({
                                           <span className="font-semibold text-foreground">
                                             {u.name}
                                           </span>
-                                          <span className="text-[9px] text-muted-foreground bg-neutral-100 dark:bg-neutral-950 px-1 py-0.2 rounded border border-border">
+                                          <span className="text-[10px] text-muted-foreground bg-neutral-100 dark:bg-neutral-950 px-1 py-0.2 rounded border border-border">
                                             {u.role}
                                           </span>
                                         </div>

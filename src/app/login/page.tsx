@@ -42,6 +42,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import Image from 'next/image';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -150,32 +151,36 @@ export default function LoginPage() {
 
         {/* Top Header Logo */}
         <div className="flex items-center gap-3 relative z-10">
-          <div className="inline-flex h-9 w-9 rounded-xl bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-600 items-center justify-center shadow-lg shadow-indigo-500/10 text-white">
-            <Terminal className="h-5 w-5" />
-          </div>
+          <Image
+            src="/logo_icon.svg"
+            alt="SwagBug Logo"
+            width={32}
+            height={32}
+            className="object-contain rounded-lg"
+          />
           <span className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-white to-neutral-400 bg-clip-text text-transparent">
-            QABug Workspace
+            SwagBug Workspace
           </span>
         </div>
 
         {/* Middle Value Proposition */}
-        <div className="space-y-4">
-          <span className="px-2.5 py-1 rounded-full border border-sky-500/25 bg-sky-500/10 text-sky-400 text-[10px] font-bold tracking-wider uppercase inline-flex items-center gap-1.5">
+        <div className="space-y-4 max-w-xl">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-sky-400">
             <Sparkles className="h-3 w-3" />
-            API Quality Assurance
+            Swagger-Native QA Workspace
           </span>
-          <h2 className="text-4xl font-extrabold tracking-tight leading-[1.15] bg-gradient-to-b from-white to-neutral-300 bg-clip-text text-transparent">
-            Track bugs, sync specs, and elevate API health.
+          <h2 className="bg-gradient-to-b from-white to-neutral-300 bg-clip-text text-4xl font-extrabold leading-[1.1] tracking-tight text-transparent">
+            Where Swagger meets modern QA workflow.
           </h2>
-          <p className="text-neutral-400 text-sm leading-relaxed font-semibold">
-            The internal QA workspace that unifies OpenAPI specs, automated
-            developer task routing, and clear issue diagnosis.
+          <p className="max-w-2xl text-sm leading-relaxed text-neutral-400">
+            Sync API endpoints directly from Swagger, report bugs faster, and
+            streamline collaboration between QA and backend teams.
           </p>
         </div>
 
         {/* Footer Area */}
         <div className="text-neutral-500 text-xs font-semibold relative z-10">
-          &copy; 2026 QABug Inc. All rights reserved.
+          &copy; 2026 SwagBug Inc. All rights reserved.
         </div>
       </div>
 
@@ -191,7 +196,7 @@ export default function LoginPage() {
               <Terminal className="h-5 w-5" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-foreground">
-              QABug Workspace
+              SwagBug Workspace
             </h1>
             <p className="text-muted-foreground text-xs leading-relaxed max-w-xs mx-auto">
               Internal API bug tracking and QA management platform.
@@ -447,23 +452,23 @@ export default function LoginPage() {
                     >
                       <SelectTrigger
                         id="signup-role"
-                        className="bg-background border-border text-foreground focus:ring-sky-500/10 focus-visible:ring-sky-500/20 rounded-xl text-xs h-10 cursor-pointer w-full"
+                        className="bg-background border-border text-foreground focus:ring-sky-500/10 focus-visible:ring-sky-500/20 rounded-xl h-10 cursor-pointer w-full"
                       >
                         <SelectValue placeholder="Select workspace role">
                           {roleLabels[selectedRole]}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent className="bg-card border-border text-foreground text-xs rounded-xl">
-                        <SelectItem value="admin" className="rounded-lg">
+                      <SelectContent className="bg-card border-border text-foreground rounded-xl">
+                        <SelectItem value="admin" className="rounded-xl">
                           Admin (Manage projects & sync)
                         </SelectItem>
-                        <SelectItem value="qa" className="rounded-lg">
+                        <SelectItem value="qa" className="rounded-xl">
                           QA (Create & edit bugs)
                         </SelectItem>
-                        <SelectItem value="developer" className="rounded-lg">
+                        <SelectItem value="developer" className="rounded-xl">
                           Developer (Update bugs status)
                         </SelectItem>
-                        <SelectItem value="viewer" className="rounded-lg">
+                        <SelectItem value="viewer" className="rounded-xl">
                           Viewer (Read-only access)
                         </SelectItem>
                       </SelectContent>

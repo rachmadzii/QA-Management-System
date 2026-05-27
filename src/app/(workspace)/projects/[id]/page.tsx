@@ -503,7 +503,7 @@ export default function ProjectDetailsPage() {
               <Loader2 className="h-7 w-7 text-sky-500 animate-spin" />
             </div>
           ) : filteredBugs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center py-16 border border-dashed border-border/80 rounded-2xl bg-card/30">
+            <div className="flex flex-col items-center justify-center text-center py-16 border border-dashed border-border/80 rounded-xl bg-card/30">
               <Bug className="h-10 w-10 text-muted-foreground/60 mb-3" />
               <h3 className="text-sm font-bold text-foreground">
                 No bug reports

@@ -1,24 +1,30 @@
-import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import { AuthProvider } from "@/providers/AuthProvider";
-import { QueryProvider } from "@/providers/QueryProvider";
-import { ThemeProvider } from "@/providers/ThemeProvider";
-import { Toaster } from "@/components/ui/sonner";
+import type { Metadata } from 'next';
+import { Plus_Jakarta_Sans, Geist_Mono } from 'next/font/google';
+import './globals.css';
+import { AuthProvider } from '@/providers/AuthProvider';
+import { QueryProvider } from '@/providers/QueryProvider';
+import { ThemeProvider } from '@/providers/ThemeProvider';
+import { Toaster } from '@/components/ui/sonner';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-sans",
-  subsets: ["latin"],
+  variable: '--font-sans',
+  subsets: ['latin'],
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
-  title: "QABug - API QA Bug Tracking & Management",
-  description: "Internal API bug tracking and QA management platform integrated with Swagger/OpenAPI.",
+  title: 'SwagBug | Swagger-Native QA Workspace',
+  description:
+    'Internal API bug tracking and QA management platform integrated with Swagger',
+  icons: {
+    icon: '/logo_icon.svg',
+    shortcut: '/logo_icon.svg',
+    apple: '/logo_icon.svg',
+  },
 };
 
 export default function RootLayout({
@@ -50,4 +56,3 @@ export default function RootLayout({
     </html>
   );
 }
-

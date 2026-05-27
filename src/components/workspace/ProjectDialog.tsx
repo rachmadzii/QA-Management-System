@@ -188,7 +188,7 @@ export function ProjectDialog({
             <Input
               id="name"
               placeholder="E-Commerce API"
-              className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs h-9"
+              className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-lg text-xs h-9"
               {...register('name')}
             />
             {errors.name && (
@@ -208,7 +208,7 @@ export function ProjectDialog({
             <Textarea
               id="description"
               placeholder="Internal endpoints for shopping cart, payment, and catalog routing."
-              className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs min-h-[70px] leading-relaxed"
+              className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-lg text-xs min-h-[70px] leading-relaxed"
               {...register('description')}
             />
           </div>
@@ -226,13 +226,13 @@ export function ProjectDialog({
             >
               <SelectTrigger
                 id="environment"
-                className="bg-card border-border text-foreground focus:ring-sky-500/20 rounded-lg text-xs h-9 w-full"
+                className="bg-card border-border text-foreground focus:ring-sky-500/20 rounded-lg h-9 w-full"
               >
                 <SelectValue placeholder="Select environment">
                   {envLabels[selectedEnvironment || 'development']}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent className="bg-card border-border text-foreground text-xs rounded-xl shadow-md">
+              <SelectContent className="bg-card border-border text-foreground rounded-lg shadow-md">
                 <SelectItem value="development" className="rounded-lg">
                   Development
                 </SelectItem>
@@ -256,7 +256,7 @@ export function ProjectDialog({
             <Input
               id="baseUrl"
               placeholder="https://api.staging.com/v1"
-              className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs h-9"
+              className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-lg text-xs h-9"
               {...register('baseUrl')}
             />
             {errors.baseUrl && (
@@ -276,7 +276,7 @@ export function ProjectDialog({
             <Input
               id="swaggerUrl"
               placeholder="https://api.staging.com/v1/swagger.json"
-              className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-xl text-xs h-9"
+              className="bg-card border-border text-foreground placeholder-muted-foreground focus-visible:ring-sky-500/20 rounded-lg text-xs h-9"
               {...register('swaggerUrl')}
             />
             {errors.swaggerUrl && (
@@ -286,7 +286,7 @@ export function ProjectDialog({
             )}
           </div>
 
-          <DialogFooter className="pt-4 gap-2">
+          <DialogFooter className="!pb-0 gap-2">
             <Button
               type="button"
               variant="outline"

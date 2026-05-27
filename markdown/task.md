@@ -1,4 +1,4 @@
-# QABug Implementation Tasks
+# SwagBug Implementation Tasks
 
 - [x] Phase 1: Initialize Next.js Project & Install Dependencies
   - [x] Initialize Next.js App Router project

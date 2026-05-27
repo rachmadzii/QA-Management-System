@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import Image from 'next/image';
 
 interface AppSidebarProps {
   collapsed: boolean;
@@ -70,12 +71,16 @@ export function AppSidebar({ collapsed, setCollapsed }: AppSidebarProps) {
       {/* Sidebar Header */}
       <div className="h-14 px-4 border-b border-neutral-200/40 dark:border-neutral-800/40 flex items-center justify-between">
         <div className="flex items-center gap-2.5 overflow-hidden select-none">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm shadow-sky-500/10">
-            <Terminal className="h-4 w-4 text-white" />
-          </div>
+          <Image
+            src="/logo_icon.svg"
+            alt="SwagBug Logo"
+            width={32}
+            height={32}
+            className="rounded-lg"
+          />
           {!collapsed && (
             <span className="font-extrabold text-sm tracking-tight text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
-              QABug
+              SwagBug
             </span>
           )}
         </div>

@@ -52,7 +52,7 @@ export function BugCard({ bug, onEndpointClick }: BugCardProps) {
   return (
     <Card
       onClick={handleCardClick}
-      className="border border-border/80 bg-card/60 hover:bg-card hover:border-neutral-300 dark:hover:border-neutral-700 cursor-pointer transition-all duration-300 shadow-xs hover:shadow-sm rounded-2xl"
+      className="border border-border/80 bg-card/60 hover:bg-card hover:border-neutral-300 dark:hover:border-neutral-700 cursor-pointer transition-all duration-300 shadow-xs hover:shadow-sm rounded-xl"
     >
       <CardHeader className="p-4 pb-2">
         <div className="flex items-start justify-between gap-3">
