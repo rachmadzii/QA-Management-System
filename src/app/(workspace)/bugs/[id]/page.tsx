@@ -64,7 +64,6 @@ export default function BugDetailsPage() {
   // QA and Admin can assign bugs to developers/admins
   const isQAOrAdmin = profile?.role === "qa" || profile?.role === "admin";
   const isDeveloperOrAdmin = profile?.role === "developer" || profile?.role === "admin";
-  const isQAOrAdmin = profile?.role === "qa" || profile?.role === "admin";
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [commentText, setCommentText] = useState("");
