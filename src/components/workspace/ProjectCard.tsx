@@ -66,7 +66,7 @@ export function ProjectCard({ project, onEdit, onRefresh }: ProjectCardProps) {
   };
 
   return (
-    <Card 
+    <Card
       onClick={handleCardClick}
       className="border border-border/80 bg-card/60 hover:bg-card hover:border-neutral-300 dark:hover:border-neutral-700 cursor-pointer transition-all duration-300 shadow-xs hover:shadow-md rounded-2xl group flex flex-col justify-between"
     >
@@ -76,8 +76,8 @@ export function ProjectCard({ project, onEdit, onRefresh }: ProjectCardProps) {
             <CardTitle className="text-foreground text-sm font-bold truncate group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors">
               {project.name}
             </CardTitle>
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className={cn("px-1.5 py-0 text-[9px] uppercase font-extrabold tracking-wider shrink-0", getEnvBadgeColor(project.environment))}
             >
               {project.environment}
@@ -95,11 +95,11 @@ export function ProjectCard({ project, onEdit, onRefresh }: ProjectCardProps) {
                 <MoreVertical className="h-4 w-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-card border border-border text-foreground rounded-xl shadow-md p-1 min-w-[130px]">
-                <DropdownMenuItem onClick={onEdit} className="hover:bg-neutral-100 dark:hover:bg-neutral-900 text-xs gap-2 py-1.5 rounded-lg font-semibold cursor-pointer">
+                <DropdownMenuItem onClick={onEdit} className="hover:bg-neutral-100 dark:hover:bg-neutral-900 text-xs gap-2 py-1.5 rounded-lg cursor-pointer">
                   <Edit2 className="h-3.5 w-3.5" />
                   Edit Project
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleDelete} className="hover:bg-neutral-100 dark:hover:bg-neutral-900 text-xs text-red-500 hover:text-red-550 dark:hover:text-red-400 gap-2 py-1.5 rounded-lg font-semibold cursor-pointer">
+                <DropdownMenuItem onClick={handleDelete} className="hover:bg-neutral-100 dark:hover:bg-neutral-900 text-xs text-red-500 hover:text-red-550 dark:hover:text-red-400 gap-2 py-1.5 rounded-lg cursor-pointer">
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete Project
                 </DropdownMenuItem>
@@ -108,7 +108,7 @@ export function ProjectCard({ project, onEdit, onRefresh }: ProjectCardProps) {
           </div>
         )}
       </CardHeader>
-      
+
       <CardContent className="pb-4 pt-1 space-y-2 mt-auto">
         {project.baseUrl && (
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
