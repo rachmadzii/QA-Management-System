@@ -134,7 +134,6 @@ export function ProjectDialog({ open, onOpenChange, projectToEdit, onSuccess }: 
       onSuccess();
       onOpenChange(false);
     } catch (err: any) {
-      console.error(err);
       toast.error(err.message || "Failed to save project");
     }
   };

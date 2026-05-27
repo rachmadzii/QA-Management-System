@@ -150,7 +150,6 @@ export default function ProjectSettingsPage() {
       toast.success("Bug form configuration updated successfully!");
     },
     onError: (err: any) => {
-      console.error(err);
       toast.error(err.message || "Failed to save configuration.");
     },
   });

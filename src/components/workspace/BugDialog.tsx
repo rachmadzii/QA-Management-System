@@ -175,7 +175,7 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
         });
         setUsers(usersList);
       } catch (err) {
-        console.error("Failed to load dialog configs:", err);
+        // Silently handle error
       } finally {
         setLoadingConfig(false);
       }
@@ -319,7 +319,6 @@ export function BugDialog({ open, onOpenChange, projectId, bugToEdit, initialEnd
       onSuccess();
       onOpenChange(false);
     } catch (err: any) {
-      console.error(err);
       toast.error(err.message || "Failed to submit bug report");
     }
   };

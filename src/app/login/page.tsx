@@ -61,10 +61,10 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
+      if (!auth) throw new Error("Firebase not configured");
       await signInWithEmailAndPassword(auth, data.email, data.password);
       toast.success("Successfully logged in!");
     } catch (error: any) {
-      console.error(error);
       toast.error(error.message || "Failed to log in");
     } finally {
       setLoading(false);
@@ -78,23 +78,10 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.user;
-
-      await updateProfile(user, { displayName: data.name });
-
-      // Save user profile details with chosen role in Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        id: user.uid,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        createdAt: serverTimestamp(),
-      });
-
+      if (!auth) throw new Error("Firebase not configured");
+      await createUserWithEmailAndPassword(auth, data.email, data.password);
       toast.success("Account created successfully!");
     } catch (error: any) {
-      console.error(error);
       toast.error(error.message || "Failed to sign up");
     } finally {
       setLoading(false);
