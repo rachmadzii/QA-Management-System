@@ -13,9 +13,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Copy local env variables to active build env to embed NEXT_PUBLIC_ variables
-RUN cp .env.local .env || true
-
 # Disable Next.js telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 
