@@ -72,6 +72,7 @@ export default function BugDetailsPage() {
   const { data: bug, isLoading: loadingBug, refetch: refetchBug } = useQuery({
     queryKey: ["bug", bugId],
     queryFn: async () => {
+      if (!db) throw new Error("Firebase not configured");
       const docRef = doc(db, "bugs", bugId);
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) {
@@ -87,30 +88,31 @@ export default function BugDetailsPage() {
   const { data: project } = useQuery({
     queryKey: ["project", projectId],
     queryFn: async () => {
-      if (!projectId) return null;
+      if (!projectId || !db) return null;
       const docRef = doc(db, "projects", projectId);
       const docSnap = await getDoc(docRef);
       return docSnap.exists() ? docSnap.data() : null;
     },
-    enabled: !!projectId,
+    enabled: !!projectId && !!db,
   });
 
   // 3. Fetch Linked Endpoint (if any)
   const { data: endpoint } = useQuery({
     queryKey: ["endpoint", bug?.endpointId],
     queryFn: async () => {
-      if (!bug?.endpointId) return null;
+      if (!bug?.endpointId || !db) return null;
       const docRef = doc(db, "endpoints", bug.endpointId);
       const docSnap = await getDoc(docRef);
       return docSnap.exists() ? docSnap.data() : null;
     },
-    enabled: !!bug?.endpointId,
+    enabled: !!bug?.endpointId && !!db,
   });
 
   // 4. Fetch Users list
   const { data: users = [] } = useQuery({
     queryKey: ["users"],
     queryFn: async () => {
+      if (!db) return [];
       const snapshot = await getDocs(collection(db, "users"));
       return snapshot.docs.map(d => d.data());
     },
@@ -120,17 +122,13 @@ export default function BugDetailsPage() {
   const { data: activities = [], refetch: refetchActivities } = useQuery({
     queryKey: ["activities", bugId],
     queryFn: async () => {
+      if (!db) return [];
       const q = query(
         collection(db, "activities"),
         where("bugId", "==", bugId)
       );
       const snapshot = await getDocs(q);
-      const list = snapshot.docs.map(d => d.data());
-      return list.sort((a: any, b: any) => {
-        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-        return timeA - timeB;
-      });
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
     },
     enabled: !!bugId,
   });
@@ -153,6 +151,7 @@ export default function BugDetailsPage() {
     }
 
     try {
+      if (!db) throw new Error("Firebase not configured");
       const bugRef = doc(db, "bugs", bugId);
       const oldStatus = bug.status;
 
@@ -195,6 +194,7 @@ export default function BugDetailsPage() {
     }
 
     try {
+      if (!db) throw new Error("Firebase not configured");
       const bugRef = doc(db, "bugs", bugId);
       const assignedId = newAssigneeId === "unassigned" ? null : newAssigneeId;
       const oldAssigneeName = usersMap[bug.assignedTo]?.name || "Unassigned";

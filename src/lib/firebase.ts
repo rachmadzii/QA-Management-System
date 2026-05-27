@@ -1,7 +1,7 @@
-import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
-import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { initializeApp, getApps, getApp as fbGetApp, type FirebaseApp } from "firebase/app";
+import { getAuth as fbGetAuth, type Auth } from "firebase/auth";
+import { getFirestore as fbGetFirestore, type Firestore } from "firebase/firestore";
+import { getStorage as fbGetStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
@@ -12,45 +12,56 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
 };
 
-let app: FirebaseApp | null = null;
-let auth: Auth | null = null;
-let db: Firestore | null = null;
-let storage: FirebaseStorage | null = null;
+let _app: FirebaseApp | null = null;
+let _auth: Auth | null = null;
+let _db: Firestore | null = null;
+let _storage: FirebaseStorage | null = null;
 
 // Lazy initialization function
 function initializeFirebase() {
   try {
     if (!firebaseConfig.apiKey || firebaseConfig.apiKey === "") {
       console.warn("Firebase: Missing API key. Please configure NEXT_PUBLIC_FIREBASE_API_KEY in .env.local");
-      return { app: null, auth: null, db: null, storage: null };
+      return false;
     }
 
     if (getApps().length === 0) {
-      app = initializeApp(firebaseConfig);
+      _app = initializeApp(firebaseConfig);
     } else {
-      app = getApp();
+      _app = fbGetApp();
     }
 
-    auth = getAuth(app);
-    db = getFirestore(app);
-    storage = getStorage(app);
+    _auth = fbGetAuth(_app);
+    _db = fbGetFirestore(_app);
+    _storage = fbGetStorage(_app);
 
-    return { app, auth, db, storage };
+    return true;
   } catch (error: any) {
     console.warn("Firebase: Initialization failed. Please verify your Firebase configuration.", error?.message);
-    return { app: null, auth: null, db: null, storage: null };
+    return false;
   }
 }
 
 // Initialize on first import (but wrapped in try-catch)
 try {
-  const initialized = initializeFirebase();
-  app = initialized.app;
-  auth = initialized.auth;
-  db = initialized.db;
-  storage = initialized.storage;
+  initializeFirebase();
 } catch (error) {
   // Silent fail - will log warning above
 }
 
-export { app, auth, db, storage };
+// Create a dummy Firestore object for type safety when Firebase is not configured
+const getDummyDb = (): Firestore => {
+  if (_db) return _db;
+  // Return a proxy that throws errors when actually used
+  return new Proxy({} as Firestore, {
+    get: () => {
+      throw new Error("Firebase is not configured. Please set up your environment variables.");
+    },
+  });
+};
+
+// Use non-null assertions since callers should handle null cases
+export const app = _app as FirebaseApp | null;
+export const auth = _auth as Auth | null;
+export const db = _db || getDummyDb(); // Default to dummy if not configured
+export const storage = _storage as FirebaseStorage | null;

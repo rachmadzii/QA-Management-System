@@ -63,8 +63,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     let unsubscribeProfile: (() => void) | null = null;
+    let initTimeout: NodeJS.Timeout | null = null;
+    let isComponentMounted = true;
+
+    // Set a timeout to fail fast if Firebase isn't responding
+    initTimeout = setTimeout(() => {
+      if (isComponentMounted) {
+        setLoading(false);
+      }
+    }, 5000); // 5 second timeout
 
     const unsubscribeAuth = onAuthStateChanged(auth!, async (firebaseUser) => {
+      // Clear timeout since we got a response
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+        initTimeout = null;
+      }
+
+      if (!isComponentMounted) return;
+
       setUser(firebaseUser);
       
       // Unsubscribe from previous profile listener if any
@@ -78,6 +95,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Listen to real-time updates for the user profile document
         unsubscribeProfile = onSnapshot(userDocRef, async (userDoc) => {
+          if (!isComponentMounted) return;
+          
           if (userDoc.exists()) {
             setProfile(userDoc.data() as UserProfile);
             setLoading(false);
@@ -98,15 +117,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setLoading(false);
           }
         }, (err) => {
-          setLoading(false);
+          if (isComponentMounted) {
+            setLoading(false);
+          }
         });
       } else {
         setProfile(null);
         setLoading(false);
       }
+    }, (error) => {
+      // Handle auth listener errors
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+      }
+      if (isComponentMounted) {
+        setLoading(false);
+      }
     });
 
     return () => {
+      isComponentMounted = false;
+      if (initTimeout) {
+        clearTimeout(initTimeout);
+      }
       unsubscribeAuth();
       if (unsubscribeProfile) {
         unsubscribeProfile();
@@ -129,7 +162,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user, loading, pathname, router]);
 
   const logout = async () => {
-    if (isConfigured) {
+    if (isConfigured && auth) {
       await signOut(auth);
       router.push("/login");
     }

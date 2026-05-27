@@ -8,6 +8,8 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
  * @returns The public download URL for the file
  */
 export async function uploadScreenshot(file: File, projectId: string): Promise<string> {
+  if (!storage) throw new Error("Firebase storage not configured");
+  
   const fileExtension = file.name.split(".").pop() || "png";
   const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExtension}`;
   
