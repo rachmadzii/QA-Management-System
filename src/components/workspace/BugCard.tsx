@@ -1,12 +1,11 @@
-"use client";
+'use client';
 
-import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatusBadge } from "./StatusBadge";
-import { SeverityBadge } from "./SeverityBadge";
-import { Badge } from "@/components/ui/badge";
-import { ArrowUp, ArrowDown, Minus, User } from "lucide-react";
-import { cn } from "@/lib/utils";
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatusBadge } from './StatusBadge';
+import { SeverityBadge } from './SeverityBadge';
+import { Badge } from '@/components/ui/badge';
+import { ArrowUp, ArrowDown, Minus, User } from 'lucide-react';
 
 interface BugCardProps {
   bug: {
@@ -15,7 +14,7 @@ interface BugCardProps {
     description: string;
     status: any;
     severity: any;
-    priority: "high" | "medium" | "low";
+    priority: 'high' | 'medium' | 'low';
     endpointPath?: string;
     endpointMethod?: string;
     httpStatus?: number;
@@ -28,9 +27,9 @@ interface BugCardProps {
 export function BugCard({ bug, onEndpointClick }: BugCardProps) {
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
-      case "high":
+      case 'high':
         return <ArrowUp className="h-3 w-3 text-red-500 shrink-0" />;
-      case "low":
+      case 'low':
         return <ArrowDown className="h-3 w-3 text-sky-500 shrink-0" />;
       default:
         return <Minus className="h-3 w-3 text-amber-500 shrink-0" />;
@@ -42,9 +41,12 @@ export function BugCard({ bug, onEndpointClick }: BugCardProps) {
   };
 
   const formatDate = (timestamp: any) => {
-    if (!timestamp) return "";
+    if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
   return (
@@ -62,7 +64,9 @@ export function BugCard({ bug, onEndpointClick }: BugCardProps) {
             {/* Linked Endpoint details */}
             {bug.endpointPath ? (
               <div className="flex items-center gap-1.5 mt-1 font-mono text-[10px] text-muted-foreground font-semibold">
-                <span className="font-extrabold text-sky-600 dark:text-sky-400 shrink-0">{bug.endpointMethod}</span>
+                <span className="font-extrabold text-sky-600 dark:text-sky-400 shrink-0">
+                  {bug.endpointMethod}
+                </span>
                 {onEndpointClick ? (
                   <button
                     type="button"
@@ -80,11 +84,15 @@ export function BugCard({ bug, onEndpointClick }: BugCardProps) {
                   </span>
                 )}
                 {bug.httpStatus && (
-                  <span className="text-red-500 dark:text-red-400 font-extrabold shrink-0">({bug.httpStatus})</span>
+                  <span className="text-red-500 dark:text-red-400 font-extrabold shrink-0">
+                    ({bug.httpStatus})
+                  </span>
                 )}
               </div>
             ) : (
-              <div className="text-[10px] text-muted-foreground/80 mt-1 font-semibold">General Application Bug</div>
+              <div className="text-[10px] text-muted-foreground/80 mt-1 font-semibold">
+                General Application Bug
+              </div>
             )}
           </div>
 
@@ -99,7 +107,10 @@ export function BugCard({ bug, onEndpointClick }: BugCardProps) {
         <div className="flex items-center gap-2">
           <SeverityBadge severity={bug.severity} />
 
-          <Badge variant="outline" className="px-1.5 py-0.5 text-[9px] bg-neutral-50/40 dark:bg-neutral-950/40 text-muted-foreground border-border gap-1 font-bold uppercase tracking-wider shrink-0">
+          <Badge
+            variant="outline"
+            className="px-1.5 py-0.5 text-[9px] bg-neutral-50/40 dark:bg-neutral-950/40 text-muted-foreground border-border gap-1 font-bold uppercase tracking-wider shrink-0"
+          >
             {getPriorityIcon(bug.priority)}
             {bug.priority}
           </Badge>
@@ -110,7 +121,7 @@ export function BugCard({ bug, onEndpointClick }: BugCardProps) {
           <div className="flex items-center gap-1.5 bg-neutral-100 dark:bg-neutral-900 px-2 py-0.5 rounded-lg border border-border">
             <User className="h-3 w-3 text-muted-foreground/75" />
             <span className="max-w-[80px] truncate text-foreground/80 text-[9px]">
-              {bug.assignedToName || "Unassigned"}
+              {bug.assignedToName || 'Unassigned'}
             </span>
           </div>
           <span>•</span>

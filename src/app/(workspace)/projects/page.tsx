@@ -1,40 +1,45 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { useAuth } from "@/providers/AuthProvider";
-import { ProjectCard } from "@/components/workspace/ProjectCard";
-import { ProjectDialog } from "@/components/workspace/ProjectDialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Plus, Search, FolderKanban, Loader2 } from "lucide-react";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/providers/AuthProvider';
+import { ProjectCard } from '@/components/workspace/ProjectCard';
+import { ProjectDialog } from '@/components/workspace/ProjectDialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Plus, Search, FolderKanban, Loader2 } from 'lucide-react';
 
 export default function ProjectsPage() {
   const { role } = useAuth();
-  const isAdmin = role === "admin";
+  const isAdmin = role === 'admin';
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
 
   // TanStack Query to fetch all projects
-  const { data: projects = [], isLoading, refetch } = useQuery({
-    queryKey: ["projects"],
+  const {
+    data: projects = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['projects'],
     queryFn: async () => {
-      const q = query(collection(db, "projects"), orderBy("createdAt", "desc"));
+      const q = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({
+      return snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       }));
-    }
+    },
   });
 
-  const filteredProjects = projects.filter((project: any) =>
-    project.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    project.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredProjects = projects.filter(
+    (project: any) =>
+      project.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      project.description?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const handleCreateClick = () => {
@@ -88,18 +93,22 @@ export default function ProjectsPage() {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="h-8 w-8 text-sky-500 animate-spin" />
-          <p className="text-muted-foreground text-xs mt-3">Loading projects...</p>
+          <p className="text-muted-foreground text-xs mt-3">
+            Loading projects...
+          </p>
         </div>
       ) : filteredProjects.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center py-20 border border-dashed border-border/80 rounded-2xl bg-card/30">
           <div className="h-12 w-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-border flex items-center justify-center mb-4 text-muted-foreground">
             <FolderKanban className="h-6 w-6" />
           </div>
-          <h3 className="text-sm font-bold text-foreground">No projects found</h3>
+          <h3 className="text-sm font-bold text-foreground">
+            No projects found
+          </h3>
           <p className="text-muted-foreground text-xs mt-1 max-w-xs leading-relaxed">
             {searchQuery
-              ? "No projects match your search query."
-              : "Create your first API project and connect Swagger documentation."}
+              ? 'No projects match your search query.'
+              : 'Create your first API project and connect Swagger documentation.'}
           </p>
           {isAdmin && !searchQuery && (
             <Button

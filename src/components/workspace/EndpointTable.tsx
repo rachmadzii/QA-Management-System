@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
+import { useState } from 'react';
 import {
   ColumnDef,
   flexRender,
@@ -9,7 +9,7 @@ import {
   getPaginationRowModel,
   SortingState,
   getSortedRowModel,
-} from "@tanstack/react-table";
+} from '@tanstack/react-table';
 import {
   Table,
   TableBody,
@@ -17,12 +17,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Copy, ExternalLink, ChevronLeft, ChevronRight, Check } from "lucide-react";
-import { toast } from "sonner";
-import { getSwaggerUiUrl } from "@/lib/swaggerParser";
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Copy,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { getSwaggerUiUrl } from '@/lib/swaggerParser';
 
 interface Endpoint {
   id: string;
@@ -48,45 +54,48 @@ export function EndpointTable({ data, onReportBug }: EndpointTableProps) {
   const handleCopy = (path: string, id: string) => {
     navigator.clipboard.writeText(path);
     setCopiedId(id);
-    toast.success("Path copied to clipboard!");
+    toast.success('Path copied to clipboard!');
     setTimeout(() => setCopiedId(null), 2000);
   };
 
   const getMethodBadgeColor = (method: string) => {
     switch (method.toUpperCase()) {
-      case "GET":
-        return "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20";
-      case "POST":
-        return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
-      case "PUT":
-        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
-      case "DELETE":
-        return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20";
-      case "PATCH":
-        return "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20";
+      case 'GET':
+        return 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20';
+      case 'POST':
+        return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+      case 'PUT':
+        return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
+      case 'DELETE':
+        return 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
+      case 'PATCH':
+        return 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
       default:
-        return "bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border-neutral-500/20";
+        return 'bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 border-neutral-500/20';
     }
   };
 
   const columns: ColumnDef<Endpoint>[] = [
     {
-      accessorKey: "method",
-      header: "Method",
+      accessorKey: 'method',
+      header: 'Method',
       cell: ({ row }) => {
-        const method = row.getValue("method") as string;
+        const method = row.getValue('method') as string;
         return (
-          <Badge variant="outline" className={`${getMethodBadgeColor(method)} font-extrabold text-[9px] w-14 tracking-wider justify-center uppercase`}>
+          <Badge
+            variant="outline"
+            className={`${getMethodBadgeColor(method)} font-extrabold text-[9px] w-14 tracking-wider justify-center uppercase`}
+          >
             {method}
           </Badge>
         );
       },
     },
     {
-      accessorKey: "path",
-      header: "Endpoint Path",
+      accessorKey: 'path',
+      header: 'Endpoint Path',
       cell: ({ row }) => {
-        const path = row.getValue("path") as string;
+        const path = row.getValue('path') as string;
         const id = row.original.id;
         return (
           <div className="flex items-center gap-2 max-w-[240px] md:max-w-md">
@@ -110,32 +119,38 @@ export function EndpointTable({ data, onReportBug }: EndpointTableProps) {
       },
     },
     {
-      accessorKey: "tag",
-      header: "Tag",
+      accessorKey: 'tag',
+      header: 'Tag',
       cell: ({ row }) => {
-        const tag = row.getValue("tag") as string;
+        const tag = row.getValue('tag') as string;
         return (
-          <Badge variant="secondary" className="bg-neutral-100 dark:bg-neutral-900 border border-border text-muted-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900 text-[9px] font-bold">
+          <Badge
+            variant="secondary"
+            className="bg-neutral-100 dark:bg-neutral-900 border border-border text-muted-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900 text-[9px] font-bold"
+          >
             {tag}
           </Badge>
         );
       },
     },
     {
-      accessorKey: "summary",
-      header: "Summary",
+      accessorKey: 'summary',
+      header: 'Summary',
       cell: ({ row }) => {
-        const summary = row.getValue("summary") as string;
+        const summary = row.getValue('summary') as string;
         return (
-          <span className="text-muted-foreground text-xs block max-w-xs truncate leading-relaxed" title={summary}>
-            {summary || "—"}
+          <span
+            className="text-muted-foreground text-xs block max-w-xs truncate leading-relaxed"
+            title={summary}
+          >
+            {summary || '—'}
           </span>
         );
       },
     },
     {
-      id: "actions",
-      header: "Actions",
+      id: 'actions',
+      header: 'Actions',
       cell: ({ row }) => {
         const endpoint = row.original;
         return (
@@ -167,6 +182,7 @@ export function EndpointTable({ data, onReportBug }: EndpointTableProps) {
     },
   ];
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,
@@ -191,16 +207,22 @@ export function EndpointTable({ data, onReportBug }: EndpointTableProps) {
         <Table className="relative">
           <TableHeader className="bg-neutral-50/75 dark:bg-neutral-900/60 sticky top-0 z-10 shadow-xs border-b border-border backdrop-blur-xs">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="border-b border-border hover:bg-transparent">
+              <TableRow
+                key={headerGroup.id}
+                className="border-b border-border hover:bg-transparent"
+              >
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} className="text-muted-foreground font-bold text-[10px] uppercase tracking-wider h-9">
+                    <TableHead
+                      key={header.id}
+                      className="text-muted-foreground font-bold text-[10px] uppercase tracking-wider h-9"
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
                     </TableHead>
                   );
                 })}
@@ -218,7 +240,7 @@ export function EndpointTable({ data, onReportBug }: EndpointTableProps) {
                     <TableCell key={cell.id} className="py-2.5">
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}
@@ -241,7 +263,7 @@ export function EndpointTable({ data, onReportBug }: EndpointTableProps) {
       {/* Pagination Controls */}
       <div className="flex items-center justify-between text-muted-foreground text-xs font-semibold px-1">
         <div>
-          Showing page {table.getState().pagination.pageIndex + 1} of{" "}
+          Showing page {table.getState().pagination.pageIndex + 1} of{' '}
           {table.getPageCount() || 1}
         </div>
         <div className="flex items-center gap-1">

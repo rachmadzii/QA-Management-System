@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { useAuth } from "@/providers/AuthProvider";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
+import React, { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/providers/AuthProvider';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Save,
@@ -17,15 +17,11 @@ import {
   Loader2,
   ShieldAlert,
   Eye,
-  Lock,
   Asterisk,
   Settings,
-  AlertCircle
-} from "lucide-react";
-import {
-  BugFormConfig,
-  DEFAULT_BUG_FORM_CONFIG,
-} from "@/lib/bugFormUtils";
+  AlertCircle,
+} from 'lucide-react';
+import { BugFormConfig, DEFAULT_BUG_FORM_CONFIG } from '@/lib/bugFormUtils';
 
 interface FieldMeta {
   key: keyof BugFormConfig;
@@ -36,69 +32,80 @@ interface FieldMeta {
 
 const FIELD_METADATA: FieldMeta[] = [
   {
-    key: "title",
-    label: "Bug Title",
-    description: "The primary headline summarizing the issue. Essential for lists and dashboard view.",
+    key: 'title',
+    label: 'Bug Title',
+    description:
+      'The primary headline summarizing the issue. Essential for lists and dashboard view.',
     canDisableVisibility: false,
   },
   {
-    key: "description",
-    label: "Problem Description",
-    description: "Detailed context, request payloads, response bodies, or textual descriptions of the error.",
+    key: 'description',
+    label: 'Problem Description',
+    description:
+      'Detailed context, request payloads, response bodies, or textual descriptions of the error.',
     canDisableVisibility: false,
   },
   {
-    key: "stepsToReproduce",
-    label: "Steps to Reproduce",
-    description: "Numbered or bulleted list of commands, actions, or steps to reproduce the bug.",
+    key: 'stepsToReproduce',
+    label: 'Steps to Reproduce',
+    description:
+      'Numbered or bulleted list of commands, actions, or steps to reproduce the bug.',
     canDisableVisibility: true,
   },
   {
-    key: "expectedResult",
-    label: "Expected Result",
-    description: "What the API or application should have returned under nominal circumstances.",
+    key: 'expectedResult',
+    label: 'Expected Result',
+    description:
+      'What the API or application should have returned under nominal circumstances.',
     canDisableVisibility: true,
   },
   {
-    key: "actualResult",
-    label: "Actual Result",
-    description: "What was actually returned (e.g. error payloads, stacktraces, or wrong status codes).",
+    key: 'actualResult',
+    label: 'Actual Result',
+    description:
+      'What was actually returned (e.g. error payloads, stacktraces, or wrong status codes).',
     canDisableVisibility: true,
   },
   {
-    key: "severity",
-    label: "Severity Level",
-    description: "Categorize the issue impact (Critical, Major, Minor, Low) using color-coded badge selectors.",
+    key: 'severity',
+    label: 'Severity Level',
+    description:
+      'Categorize the issue impact (Critical, Major, Minor, Low) using color-coded badge selectors.',
     canDisableVisibility: true,
   },
   {
-    key: "priority",
-    label: "Priority Level",
-    description: "Define the resolution urgency (High, Medium, Low) to schedule developer triage.",
+    key: 'priority',
+    label: 'Priority Level',
+    description:
+      'Define the resolution urgency (High, Medium, Low) to schedule developer triage.',
     canDisableVisibility: true,
   },
   {
-    key: "httpStatus",
-    label: "HTTP Status Code",
-    description: "Numerical input field validating status codes (e.g. 500, 404, 400).",
+    key: 'httpStatus',
+    label: 'HTTP Status Code',
+    description:
+      'Numerical input field validating status codes (e.g. 500, 404, 400).',
     canDisableVisibility: true,
   },
   {
-    key: "endpointId",
-    label: "Linked API Endpoint",
-    description: "Connect reports to specific route paths retrieved from the Swagger specification.",
+    key: 'endpointId',
+    label: 'Linked API Endpoint',
+    description:
+      'Connect reports to specific route paths retrieved from the Swagger specification.',
     canDisableVisibility: true,
   },
   {
-    key: "assignedTo",
-    label: "Assignee",
-    description: "Directly assign developer resources or project managers to take ownership.",
+    key: 'assignedTo',
+    label: 'Assignee',
+    description:
+      'Directly assign developer resources or project managers to take ownership.',
     canDisableVisibility: true,
   },
   {
-    key: "screenshots",
-    label: "Screenshots & Evidence",
-    description: "Allow uploading diagnostic image files to visually confirm structural failures.",
+    key: 'screenshots',
+    label: 'Screenshots & Evidence',
+    description:
+      'Allow uploading diagnostic image files to visually confirm structural failures.',
     canDisableVisibility: true,
   },
 ];
@@ -107,21 +114,25 @@ export default function ProjectSettingsPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
 
   const projectId = params.id as string;
-  const isAdmin = profile?.role === "admin";
+  const isAdmin = profile?.role === 'admin';
 
   const [localConfig, setLocalConfig] = useState<BugFormConfig | null>(null);
 
   // 1. Fetch Project Details
-  const { data: project, isLoading: loadingProject, refetch } = useQuery({
-    queryKey: ["project", projectId],
+  const {
+    data: project,
+    isLoading: loadingProject,
+    refetch,
+  } = useQuery({
+    queryKey: ['project', projectId],
     queryFn: async () => {
-      const docRef = doc(db, "projects", projectId);
+      const docRef = doc(db, 'projects', projectId);
       const docSnap = await getDoc(docRef);
       if (!docSnap.exists()) {
-        throw new Error("Project not found");
+        throw new Error('Project not found');
       }
       return docSnap.data();
     },
@@ -140,21 +151,24 @@ export default function ProjectSettingsPage() {
   // 2. Save Config Mutation
   const saveMutation = useMutation({
     mutationFn: async (newConfig: BugFormConfig) => {
-      const docRef = doc(db, "projects", projectId);
+      const docRef = doc(db, 'projects', projectId);
       await updateDoc(docRef, {
         bugFormConfig: newConfig,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      toast.success("Bug form configuration updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      toast.success('Bug form configuration updated successfully!');
     },
     onError: (err: any) => {
-      toast.error(err.message || "Failed to save configuration.");
+      toast.error(err.message || 'Failed to save configuration.');
     },
   });
 
-  const handleToggleVisibility = (key: keyof BugFormConfig, checked: boolean) => {
+  const handleToggleVisibility = (
+    key: keyof BugFormConfig,
+    checked: boolean,
+  ) => {
     if (!localConfig) return;
 
     setLocalConfig((prev) => {
@@ -188,7 +202,9 @@ export default function ProjectSettingsPage() {
 
   const handleResetToDefaults = () => {
     setLocalConfig(DEFAULT_BUG_FORM_CONFIG);
-    toast.info("Form configuration reset to defaults. Click 'Save Changes' to commit.");
+    toast.info(
+      "Form configuration reset to defaults. Click 'Save Changes' to commit.",
+    );
   };
 
   const handleDiscardChanges = () => {
@@ -197,7 +213,7 @@ export default function ProjectSettingsPage() {
         ...DEFAULT_BUG_FORM_CONFIG,
         ...project.bugFormConfig,
       });
-      toast.info("Changes discarded.");
+      toast.info('Changes discarded.');
     }
   };
 
@@ -211,7 +227,9 @@ export default function ProjectSettingsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-32">
         <Loader2 className="h-8 w-8 text-sky-500 animate-spin" />
-        <p className="text-muted-foreground text-xs mt-3 animate-pulse">Loading settings...</p>
+        <p className="text-muted-foreground text-xs mt-3 animate-pulse">
+          Loading settings...
+        </p>
       </div>
     );
   }
@@ -220,8 +238,14 @@ export default function ProjectSettingsPage() {
   if (!project) {
     return (
       <div className="text-center py-20 bg-card border border-border rounded-2xl">
-        <h3 className="text-base font-bold text-foreground">Project not found</h3>
-        <Button variant="link" onClick={() => router.push("/projects")} className="text-sky-500 mt-2 text-xs">
+        <h3 className="text-base font-bold text-foreground">
+          Project not found
+        </h3>
+        <Button
+          variant="link"
+          onClick={() => router.push('/projects')}
+          className="text-sky-500 mt-2 text-xs"
+        >
           Back to Projects
         </Button>
       </div>
@@ -244,9 +268,12 @@ export default function ProjectSettingsPage() {
           <div className="mx-auto w-12 h-12 bg-red-500/10 border border-red-500/25 rounded-2xl flex items-center justify-center text-red-500 mb-4">
             <ShieldAlert className="h-6 w-6" />
           </div>
-          <h2 className="text-base font-extrabold text-foreground tracking-tight">Access Denied</h2>
+          <h2 className="text-base font-extrabold text-foreground tracking-tight">
+            Access Denied
+          </h2>
           <p className="text-muted-foreground text-xs leading-relaxed max-w-sm mx-auto mt-2 font-semibold">
-            Only project Administrators possess permission to modify bug form fields and validation rules.
+            Only project Administrators possess permission to modify bug form
+            fields and validation rules.
           </p>
           <Button
             onClick={() => router.push(`/projects/${projectId}`)}
@@ -294,10 +321,13 @@ export default function ProjectSettingsPage() {
           <div className="h-7 w-7 rounded-lg bg-sky-500/10 border border-sky-500/25 flex items-center justify-center text-sky-500">
             <Settings className="h-4 w-4" />
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight text-foreground">Bug Form Configuration</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-foreground">
+            Bug Form Configuration
+          </h1>
         </div>
         <p className="text-muted-foreground text-xs max-w-2xl leading-relaxed">
-          Customize visibility and requirement rules for the bug report dialog in <strong>{project.name}</strong>. Core fields are locked to visible.
+          Customize visibility and requirement rules for the bug report dialog
+          in <strong>{project.name}</strong>. Core fields are locked to visible.
         </p>
       </div>
 
@@ -305,7 +335,10 @@ export default function ProjectSettingsPage() {
       <div className="space-y-4">
         {localConfig &&
           FIELD_METADATA.map((field) => {
-            const configVal = localConfig[field.key] || { enabled: true, required: false };
+            const configVal = localConfig[field.key] || {
+              enabled: true,
+              required: false,
+            };
             const isVisible = configVal.enabled;
             const isRequired = configVal.required;
 
@@ -317,7 +350,9 @@ export default function ProjectSettingsPage() {
                 {/* Field Details */}
                 <div className="space-y-1 max-w-lg">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-foreground">{field.label}</span>
+                    <span className="font-bold text-xs text-foreground">
+                      {field.label}
+                    </span>
                     {!field.canDisableVisibility && (
                       <span className="text-[9px] px-1.5 py-0.2 rounded bg-sky-500/10 border border-sky-500/20 text-sky-650 dark:text-sky-400 font-extrabold uppercase tracking-wide">
                         Core Field
@@ -339,7 +374,9 @@ export default function ProjectSettingsPage() {
                     </span>
                     <Switch
                       checked={isVisible}
-                      onCheckedChange={(checked) => handleToggleVisibility(field.key, checked)}
+                      onCheckedChange={(checked) =>
+                        handleToggleVisibility(field.key, checked)
+                      }
                       disabled={!field.canDisableVisibility}
                     />
                   </div>
@@ -352,7 +389,9 @@ export default function ProjectSettingsPage() {
                     </span>
                     <Switch
                       checked={isRequired}
-                      onCheckedChange={(checked) => handleToggleRequired(field.key, checked)}
+                      onCheckedChange={(checked) =>
+                        handleToggleRequired(field.key, checked)
+                      }
                       disabled={!isVisible} // Disabled if hidden
                     />
                   </div>

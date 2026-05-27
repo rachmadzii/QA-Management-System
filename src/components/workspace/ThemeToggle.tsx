@@ -1,18 +1,23 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { useTheme } from "next-themes";
-import { Button } from "@/components/ui/button";
-import { Sun, Moon } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from 'next-themes';
+import { Button } from '@/components/ui/button';
+import { Sun, Moon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSyncExternalStore } from 'react';
+
+function useMounted() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   if (!mounted) {
     return (
@@ -27,19 +32,19 @@ export function ThemeToggle() {
     );
   }
 
-  const isDark = resolvedTheme === "dark";
+  const isDark = resolvedTheme === 'dark';
 
   return (
     <Button
       variant="ghost"
       size="icon"
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
       className="h-9 w-9 text-neutral-500 hover:text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg border border-neutral-200/40 dark:border-neutral-800/40 transition-colors shadow-xs"
-      title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
-          key={isDark ? "dark" : "light"}
+          key={isDark ? 'dark' : 'light'}
           initial={{ y: -10, opacity: 0, rotate: -45 }}
           animate={{ y: 0, opacity: 1, rotate: 0 }}
           exit={{ y: 10, opacity: 0, rotate: 45 }}
