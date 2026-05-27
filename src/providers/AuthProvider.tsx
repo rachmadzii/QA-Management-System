@@ -57,14 +57,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== "YOUR_API_KEY";
 
   useEffect(() => {
-    if (!isConfigured) {
+    if (!isConfigured || !auth || !db) {
       setLoading(false);
       return;
     }
 
     let unsubscribeProfile: (() => void) | null = null;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth!, async (firebaseUser) => {
       setUser(firebaseUser);
       
       // Unsubscribe from previous profile listener if any
